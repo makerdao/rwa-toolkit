@@ -28,6 +28,10 @@ import "dss-interfaces/dss/GemJoinAbstract.sol";
 import "dss-interfaces/dapp/DSTokenAbstract.sol";
 import "dss-interfaces/dss/ChainlogAbstract.sol";
 
+interface ERC20Like {
+    function transfer(address, uint256) external returns (bool);
+}
+
 interface RwaLiquidationLike {
     function wards(address) external returns (uint256);
 
@@ -211,6 +215,10 @@ contract SpellAction {
 
         // set up output conduit
         RwaOutputConduitLike(RWA001_A_OUTPUT_CONDUIT).hope(RWA001_OPERATOR);
+
+        // sent RWA token to Operator
+        ERC20Like(RWA001_GEM).transfer(RWA001_OPERATOR, 1 * WAD);
+
         // could potentially kiss some BD addresses if they are available
     }
 }

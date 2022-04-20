@@ -29,19 +29,7 @@ contract RwaTokenFactory {
     mapping(bytes32 => address) public tokenAddresses;
     /// @notice list of created RWA token symbols.
     bytes32[] public tokens;
-    /// @notice Addresses with admin access on this contract. `wards[usr]`
-    mapping(address => uint256) public wards;
 
-    /**
-     * @notice `usr` was granted admin access.
-     * @param usr The user address.
-     */
-    event Rely(address indexed usr);
-    /**
-     * @notice `usr` admin access was revoked.
-     * @param usr The user address.
-     */
-    event Deny(address indexed usr);
     /**
      * @notice RWA Token created.
      * @param name Token name.
@@ -51,45 +39,8 @@ contract RwaTokenFactory {
     event RwaTokenCreated(string name, string indexed symbol, address indexed recipient);
 
     /**
-     * @notice Check if `msg.sender` have admin access.
-     */
-    modifier auth() {
-        require(wards[msg.sender] == 1, "RwaTokenFactory/not-authorized");
-        _;
-    }
-
-    /**
-     * @notice Gives `owner` admin access.
-     * @dev In MCD context, `owner` is meant to be a contract with root access to the system (i.e.: `DSPauseProxy`).
-     * @param owner The owner address.
-     */
-    constructor(address owner) public {
-        require(owner != address(0), "RwaTokenFactory/owner-not-set");
-        wards[owner] = 1;
-        emit Rely(owner);
-    }
-
-    /**
-     * @notice Grants `usr` admin access to this contract.
-     * @param usr The user address.
-     */
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-
-    /**
-     * @notice Revokes `usr` admin access from this contract.
-     * @param usr The user address.
-     */
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-
-    /**
-     * @notice Deploys a RWA Token and mint `1 * WAD` to the `recipient` address.
-     * @dev The history of all created tokens are stored in `tokenAddresses`, which is publicly accessible.
+     * @notice Deploy an RWA Token and mint `1 * WAD` to recipient address.
+     * @dev History of created tokens are stored in `tokenData` which is publicly accessible
      * @param name Token name.
      * @param symbol Token symbol.
      * @param recipient Recipient address.
@@ -98,7 +49,7 @@ contract RwaTokenFactory {
         string calldata name,
         string calldata symbol,
         address recipient
-    ) public auth returns (RwaToken) {
+    ) public returns (RwaToken) {
         require(recipient != address(0), "RwaTokenFactory/recipient-not-set");
         require(bytes(name).length != 0, "RwaTokenFactory/name-not-set");
         require(bytes(symbol).length != 0, "RwaTokenFactory/symbol-not-set");

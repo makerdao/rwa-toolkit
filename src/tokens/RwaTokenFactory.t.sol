@@ -25,52 +25,38 @@ import {RwaTokenFactory} from "./RwaTokenFactory.sol";
 contract RwaTokenFactoryTest is DSTest {
     uint256 internal constant WAD = 10**18;
 
-    ForwardProxy internal op;
-    ForwardProxy internal recipient;
-    RwaTokenFactory internal tokenFactory;
-    string internal constant NAME = "RWA001-Test";
-    string internal constant SYMBOL = "RWA001";
+    ForwardProxy recipient;
+    RwaTokenFactory tokenFactory;
+    string NAME = "RWA001-Test";
+    string SYMBOL = "RWA001";
 
     function setUp() public {
-        op = new ForwardProxy();
         recipient = new ForwardProxy();
-        tokenFactory = new RwaTokenFactory(address(op));
-    }
-
-    function test_authSet() public {
-        assertEq(tokenFactory.wards(address(op)), 1);
-    }
-
-    function testFail_dsPauseRequireForFactoryDeploy() public {
-        new RwaTokenFactory(address(0));
-    }
-
-    function testFail_failOnNotAuthorized() public {
-        tokenFactory.createRwaToken(NAME, SYMBOL, address(this));
+        tokenFactory = new RwaTokenFactory();
     }
 
     function testFail_nameAndSymbolRequired() public {
-        RwaTokenFactory(op._(address(tokenFactory))).createRwaToken("", "", address(this));
+        tokenFactory.createRwaToken("", "", address(this));
     }
 
     function testFail_recipientRequired() public {
-        RwaTokenFactory(op._(address(tokenFactory))).createRwaToken(NAME, SYMBOL, address(0));
+        tokenFactory.createRwaToken(NAME, SYMBOL, address(0));
     }
 
     function testFail_failOnAlreadyExistSymbol() public {
-        RwaToken token = RwaTokenFactory(op._(address(tokenFactory))).createRwaToken(NAME, SYMBOL, address(recipient));
+        RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
         assertTrue(address(token) != address(0));
-        RwaTokenFactory(op._(address(tokenFactory))).createRwaToken(NAME, SYMBOL, address(recipient));
+        tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
     }
 
     function test_canCreateRwaToken() public {
-        RwaToken token = RwaTokenFactory(op._(address(tokenFactory))).createRwaToken(NAME, SYMBOL, address(recipient));
+        RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
         assertTrue(address(token) != address(0));
         assertEq(token.balanceOf(address(recipient)), 1 * WAD);
     }
 
     function test_canGetRegistry() public {
-        RwaToken token = RwaTokenFactory(op._(address(tokenFactory))).createRwaToken(NAME, SYMBOL, address(recipient));
+        RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
         assertTrue(address(token) != address(0));
         bytes32 symbol = tokenFactory.stringToBytes32(SYMBOL);
         bytes32[1] memory tokens = [symbol];

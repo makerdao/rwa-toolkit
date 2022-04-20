@@ -27,8 +27,8 @@ contract RwaTokenFactoryTest is DSTest {
 
     ForwardProxy recipient;
     RwaTokenFactory tokenFactory;
-    string NAME = "RWA001-Test";
-    string SYMBOL = "RWA001";
+    string internal constant NAME = "RWA001-Test";
+    string internal constant SYMBOL = "RWA001";
 
     function setUp() public {
         recipient = new ForwardProxy();

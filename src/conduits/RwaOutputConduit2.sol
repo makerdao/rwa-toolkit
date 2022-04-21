@@ -17,6 +17,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
+import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
+
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
  * @author Kaue Cano <kaue@clio.finance>
@@ -28,17 +30,22 @@ pragma solidity 0.6.12;
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  */
 contract RwaOutputConduit2 {
+    /// @notice Addresses with admin access on this contract. `wards[usr]`
+    mapping(address => uint256) public wards;
+    /// @notice Addresses with operator access on this contract. `can[usr]`
+    mapping(address => uint256) public can;
+
+    /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
+    DSTokenAbstract private __unused_gov;
     /// @notice Dai token contract address
-    DSTokenLike public immutable dai;
+    DSTokenAbstract public dai;
     /// @notice Dai output address
     address public to;
 
-    /// @notice Addresses with admin access on this contract. `wards[usr]`
-    mapping(address => uint256) public wards;
+    /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
+    mapping(address => uint256) private __unused_bud;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
-    /// @notice Addresses with operator access on this contract. `can[usr]`
-    mapping(address => uint256) public can;
 
     /**
      * @notice `usr` was granted admin access.
@@ -87,7 +94,7 @@ contract RwaOutputConduit2 {
      * @param _dai Dai address.
      */
     constructor(address _dai) public {
-        dai = DSTokenLike(_dai);
+        dai = DSTokenAbstract(_dai);
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -176,13 +183,4 @@ contract RwaOutputConduit2 {
         dai.transfer(recipient, balance);
         emit Push(recipient, balance);
     }
-}
-
-/**
- * @title A subset of `DSToken` containing only the methods required in this file.
- */
-interface DSTokenLike {
-    function balanceOf(address) external view returns (uint256);
-
-    function transfer(address, uint256) external returns (uint256);
 }

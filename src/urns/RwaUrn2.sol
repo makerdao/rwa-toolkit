@@ -18,14 +18,19 @@
 
 pragma solidity 0.6.12;
 
-import {VatAbstract, JugAbstract, DSTokenAbstract, GemJoinAbstract, DaiJoinAbstract, DaiAbstract} from "dss-interfaces/Interfaces.sol";
+import {VatAbstract} from "dss-interfaces/dss/VatAbstract.sol";
+import {JugAbstract} from "dss-interfaces/dss/JugAbstract.sol";
+import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
+import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
+import {DaiJoinAbstract} from "dss-interfaces/dss/DaiJoinAbstract.sol";
+import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
  * @author Kaue Cano <kaue@clio.finance>
  * @author Henrique Barcelos <henrique@clio.finance>
  * @title RwaUrn2: A vault for Real-World Assets (RWA).
- * @dev This vault implements `flake()`, which allows an authorized party to flake any outstanding
+ * @dev `quit()` can be called before emergency shutdown by an operator.
  * Dai balance from it into the output conduit.
  */
 contract RwaUrn2 {
@@ -95,13 +100,6 @@ contract RwaUrn2 {
      * @param wad The amount repaid.
      */
     event Wipe(address indexed usr, uint256 wad);
-
-    /**
-     * @notice The urn outstanding balance was flushed out to `outputConduit`.
-     * @param usr The operator address.
-     * @param wad The amount flushed out.
-     */
-    event Flake(address indexed usr, uint256 wad);
 
     /**
      * @notice The urn outstanding balance was flushed out to `outputConduit`.
@@ -285,22 +283,10 @@ contract RwaUrn2 {
 
     /**
      * @notice Flushes out any outstanding Dai balance to `outputConduit` address.
-     * @dev Can only be called by an operator.
-     */
-    function flake() external operator {
-        DSTokenAbstract dai = DSTokenAbstract(daiJoin.dai());
-        uint256 wad = dai.balanceOf(address(this));
-
-        dai.transfer(outputConduit, wad);
-        emit Flake(msg.sender, wad);
-    }
-
-    /**
-     * @notice Flushes out any outstanding Dai balance to `outputConduit` address.
-     * @dev Can only be called after `cage()` has been called on the Vat.
+     * @dev Can only be called by an operator or after `cage()` has been called on the Vat.
      */
     function quit() external {
-        require(vat.live() == 0, "RwaUrn2/vat-still-live");
+        require(can[msg.sender] == 1 || vat.live() == 0, "RwaUrn2/not-operator-or-still-live");
 
         DSTokenAbstract dai = DSTokenAbstract(daiJoin.dai());
         uint256 wad = dai.balanceOf(address(this));

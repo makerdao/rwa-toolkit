@@ -46,7 +46,7 @@ ILK="${SYMBOL}-${LETTER}"
 ILK_ENCODED=$(seth --to-bytes32 "$(seth --from-ascii ${ILK})")
 
 # build it
-dapp --use solc:0.5.12 build
+dapp build
 
 # tokenize it
 RWA_TOKEN=$(seth send "${RWA_TOKEN_FACTORY}" 'createRwaToken(string,string,address)' \"$NAME\" \"$SYMBOL\" "$MCD_PAUSE_PROXY")

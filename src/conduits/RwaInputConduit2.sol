@@ -17,6 +17,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
+import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
+
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
  * @author Kaue Cano <kaue@clio.finance>
@@ -28,10 +30,12 @@ pragma solidity 0.6.12;
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  */
 contract RwaInputConduit2 {
+    /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
+    DSTokenAbstract private __unused_gov;
     /// @notice Dai token contract address
-    DSTokenLike public immutable dai;
+    DSTokenAbstract public dai;
     /// @notice RWA urn contract address
-    address public immutable to;
+    address public to;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
@@ -71,7 +75,7 @@ contract RwaInputConduit2 {
      * @param _to RwaUrn contract address.
      */
     constructor(address _dai, address _to) public {
-        dai = DSTokenLike(_dai);
+        dai = DSTokenAbstract(_dai);
         to = _to;
 
         wards[msg.sender] = 1;
@@ -131,13 +135,4 @@ contract RwaInputConduit2 {
 
         emit Push(to, balance);
     }
-}
-
-/**
- * @title A subset of `DSToken` containing only the methods required in this file.
- */
-interface DSTokenLike {
-    function balanceOf(address) external view returns (uint256);
-
-    function transfer(address, uint256) external returns (uint256);
 }

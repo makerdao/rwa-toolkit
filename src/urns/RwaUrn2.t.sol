@@ -118,8 +118,8 @@ contract RwaOperator is TryCaller {
         urn.wipe(wad);
     }
 
-    function flake() public {
-        urn.flake();
+    function quit() public {
+        urn.quit();
     }
 
     function canPick(address who) public returns (bool) {
@@ -512,7 +512,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         assertEq(rwa.balanceOf(address(rando)), 1 ether);
     }
 
-    function testFlake() public {
+    function testQuitByOperator() public {
         op.lock(1 ether);
         op.draw(200 ether);
 
@@ -524,12 +524,12 @@ contract RwaUrn2Test is DSTest, DSMath {
 
         assertEq(dai.balanceOf(address(urn)), 200 ether);
         assertEq(dai.balanceOf(address(outConduit)), 0);
-        op.flake();
+        op.quit();
         assertEq(dai.balanceOf(address(urn)), 0);
         assertEq(dai.balanceOf(address(outConduit)), 200 ether);
     }
 
-    function testFailFlakeNotOperator() public {
+    function testFailQuitNotOperatorVatStillAlive() public {
         op.lock(1 ether);
         op.draw(200 ether);
 
@@ -539,7 +539,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         rec.transfer(address(inConduit), 200 ether);
         mate.pushIn();
 
-        urn.flake();
+        urn.quit();
     }
 
     function testQuit() public {

@@ -1,5 +1,4 @@
-// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2021-2022 Dai Foundation
+// Copyright (C) 2022 Dai Foundation
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by

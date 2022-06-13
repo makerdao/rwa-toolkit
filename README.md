@@ -15,30 +15,21 @@
 
 ## Spells
 
-**⚠️ ATTENTION:** Spells are being moved to the [`ces-spells-goerli` repo](https://github.com/clio-finance/ces-spells-goerli/tree/master/template/rwa-onboarding), once the migration is completed, these files are going to be removed.
-
-The following can be found in [`src/spells/RwaSpell.sol`](./src/spells/RwaSpell.sol):
-- `RwaSpell`: which deploys and configures the RWA collateral in MakerDAO in accordance with MIP21 
-
-The following can be found in [`src/spells/RwaSpell.t.sol`](./src/spells/RwaSpell.t.sol):
-
-- `TellSpell`: which allows MakerDAO governance to initiate liquidation proceedings.
-- `CureSpell`: which allows MakerDAO governance to dismiss liquidation proceedings.
-- `CullSpell`: which allows MakerDAO governance to write off a loan which was in liquidation.
+**⚠️ ATTENTION:** Spells were moved to [`ces-spells-goerli`](https://github.com/clio-finance/ces-spells-goerli/tree/master/template/rwa-onboarding).
 
 ## Deploy
 
-### kovan
+### Kovan [deprecated]
 ```
 make deploy-kovan
 ```
 
-### goerli
+### Goerli
 ```
 make deploy-goerli
 ```
 
-### mainnet
+### Mainnet
 ```
 make deploy-mainnet
 ```

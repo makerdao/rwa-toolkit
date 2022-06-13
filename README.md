@@ -11,6 +11,7 @@
 - `RwaInputConduit2`: variation of `RwaInputConduit` with an whitelist to control permissions to repay DAI.
 - `RwaToken`: represents the RWA collateral in the system.
 - `RwaTokenFactory`: factory of `RwaToken`s.
+- `RwaJar`: facilitates paying stability fess directly into the DSS surplus buffer.
 
 ## Spells
 

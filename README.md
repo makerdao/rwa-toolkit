@@ -19,7 +19,7 @@
 
 ## Deploy
 
-### Kovan [deprecated]
+### Kovan \[deprecated\]
 ```
 make deploy-kovan
 ```

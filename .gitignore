@@ -4,3 +4,4 @@ addresses.json
 out/
 cache/
 node_modules/
+.vscode/

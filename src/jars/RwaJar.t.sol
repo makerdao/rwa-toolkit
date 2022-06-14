@@ -59,8 +59,9 @@ contract RwaJarTest is DSTest, DSMath {
         dai.setOwner(address(daiJoin));
 
         chainlog.setAddress("MCD_VOW", VOW);
+        chainlog.setAddress("MCD_JOIN_DAI", address(daiJoin));
 
-        jar = new RwaJar(address(daiJoin), address(chainlog));
+        jar = new RwaJar(address(chainlog));
     }
 
     function test_void_sends_all_dai_balance_to_the_vow(uint128 amount) public {

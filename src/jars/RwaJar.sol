@@ -42,13 +42,17 @@ contract RwaJar {
 
     /**
      * @dev The Dai address is obtained from the DaiJoin contract.
-     * @param daiJoin_ The DaiJoin adapter from MCD.
      * @param chainlog_ The chainlog from MCD.
      * TODO: get the VOW address from the chainlog. Remove from the constructor.
      */
-    constructor(address daiJoin_, address chainlog_) public {
+    constructor(address chainlog_) public {
+        address daiJoin_ = ChainlogAbstract(chainlog_).getAddress("MCD_JOIN_DAI");
+
+        // DaiJoin and Dai are meant to be immutable, so we can store them.
         daiJoin = DaiJoinAbstract(daiJoin_);
         dai = DaiAbstract(DaiJoinAbstract(daiJoin_).dai());
+
+        // We also store the chainlog to get the Vow address on-demand.
         chainlog = ChainlogAbstract(chainlog_);
 
         DaiAbstract(DaiJoinAbstract(daiJoin_).dai()).approve(daiJoin_, type(uint256).max);

@@ -18,6 +18,7 @@ pragma solidity 0.6.12;
 
 import "dss-interfaces/dss/DaiJoinAbstract.sol";
 import "dss-interfaces/dss/DaiAbstract.sol";
+import "dss-interfaces/dss/ChainlogAbstract.sol";
 
 /**
  * @author Henrique Barcelos <henrique@clio.finance>
@@ -29,24 +30,26 @@ contract RwaJar {
     DaiJoinAbstract public immutable daiJoin;
     /// @notice The Dai token.
     DaiAbstract public immutable dai;
-    /// @notice The Vow address from MCD.
-    address public immutable vow;
+    /// @notice The Chainlog from MCD.
+    ChainlogAbstract public immutable chainlog;
 
     /**
      * @notice Emitted whenever Dai is sent to the `vow`.
-     * @param amount The amount of Dai sent.
+     * @param usr The origin of the funds.
+     * @param wad The amount of Dai sent.
      */
-    event Toss(uint256 amount);
+    event Toss(address indexed usr, uint256 wad);
 
     /**
      * @dev The Dai address is obtained from the DaiJoin contract.
      * @param daiJoin_ The DaiJoin adapter from MCD.
-     * @param vow_ The vow from MCD.
+     * @param chainlog_ The chainlog from MCD.
+     * TODO: get the VOW address from the chainlog. Remove from the constructor.
      */
-    constructor(address daiJoin_, address vow_) public {
+    constructor(address daiJoin_, address chainlog_) public {
         daiJoin = DaiJoinAbstract(daiJoin_);
         dai = DaiAbstract(DaiJoinAbstract(daiJoin_).dai());
-        vow = vow_;
+        chainlog = ChainlogAbstract(chainlog_);
 
         DaiAbstract(DaiJoinAbstract(daiJoin_).dai()).approve(daiJoin_, type(uint256).max);
     }
@@ -60,9 +63,9 @@ contract RwaJar {
         uint256 balance = dai.balanceOf(address(this));
         require(balance > 0, "RwaJar/already-empty");
 
-        daiJoin.join(vow, balance);
+        daiJoin.join(chainlog.getAddress("MCD_VOW"), balance);
 
-        emit Toss(balance);
+        emit Toss(address(this), balance);
     }
 
     /**
@@ -73,8 +76,8 @@ contract RwaJar {
      */
     function toss(uint256 wad) external {
         dai.transferFrom(msg.sender, address(this), wad);
-        daiJoin.join(vow, wad);
+        daiJoin.join(chainlog.getAddress("MCD_VOW"), wad);
 
-        emit Toss(wad);
+        emit Toss(msg.sender, wad);
     }
 }

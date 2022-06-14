@@ -43,7 +43,6 @@ contract RwaJar {
     /**
      * @dev The Dai address is obtained from the DaiJoin contract.
      * @param chainlog_ The chainlog from MCD.
-     * TODO: get the VOW address from the chainlog. Remove from the constructor.
      */
     constructor(address chainlog_) public {
         address daiJoin_ = ChainlogAbstract(chainlog_).getAddress("MCD_JOIN_DAI");

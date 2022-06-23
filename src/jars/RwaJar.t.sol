@@ -22,6 +22,7 @@ import {DSMath} from "ds-math/math.sol";
 
 import {Vat} from "dss/vat.sol";
 import {DaiJoin} from "dss/join.sol";
+import {ChainLog} from "dss-chain-log/ChainLog.sol";
 
 import {RwaJar} from "./RwaJar.sol";
 
@@ -39,6 +40,7 @@ contract RwaJarTest is DSTest, DSMath {
     Hevm internal hevm;
 
     Vat internal vat;
+    ChainLog internal chainlog;
     DaiJoin internal daiJoin;
     DSToken internal dai;
     address internal constant VOW = address(0x1337);
@@ -48,6 +50,7 @@ contract RwaJarTest is DSTest, DSMath {
     function setUp() public {
         hevm = Hevm(address(CHEAT_CODE));
 
+        chainlog = new ChainLog();
         vat = new Vat();
         dai = new DSToken("Dai");
         daiJoin = new DaiJoin(address(vat), address(dai));
@@ -55,7 +58,10 @@ contract RwaJarTest is DSTest, DSMath {
         vat.rely(address(daiJoin));
         dai.setOwner(address(daiJoin));
 
-        jar = new RwaJar(address(daiJoin), VOW);
+        chainlog.setAddress("MCD_VOW", VOW);
+        chainlog.setAddress("MCD_JOIN_DAI", address(daiJoin));
+
+        jar = new RwaJar(address(chainlog));
     }
 
     function test_void_sends_all_dai_balance_to_the_vow(uint128 amount) public {

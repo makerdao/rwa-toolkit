@@ -25,3 +25,6 @@
 [submodule "lib/forward-proxy"]
 	path = lib/forward-proxy
 	url = https://github.com/hbarcelos/forward-proxy
+[submodule "lib/dss-chain-log"]
+	path = lib/dss-chain-log
+	url = https://github.com/makerdao/dss-chain-log

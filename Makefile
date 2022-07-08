@@ -1,9 +1,25 @@
+# include .env file and export its env vars
+# (-include to ignore error if it does not exist)-include .env
 -include .env
 
-all            :; dapp --use solc:0.6.12 build
-clean          :; dapp clean
-test           :; ./test-rwaspell.sh ${match}
-deploy         :; echo "use deploy-mainnet, deploy-kovan, or deploy-goerli"
-deploy-kovan   :; ./scripts/deploy.sh kovan
-deploy-goerli  :; ./scripts/deploy.sh goerli
-deploy-mainnet :; ./scripts/deploy.sh ethlive
+# install solc version
+# example to install other versions: `make solc 0_8_14`
+SOLC_VERSION := 0_8_14
+
+clean:; forge clean
+update:; forge update
+# Build & test
+build:; forge build
+test:; forge test # --ffi # enable if you need the `ffi` cheat code on HEVM
+
+flatten:; forge flatten --source-file ${file}
+
+ # Constructor args must come last
+deploy:; @scripts/forge-deploy.sh ${args}
+ # Differently than deploy, this requires abi-encoded constructor arguments
+verify:; @scripts/forge-verify.sh ${args}
+
+send:; @scripts/cast-send.sh ${args}
+
+nodejs-deps:; yarn install
+lint:; yarn run lint

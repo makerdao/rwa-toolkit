@@ -16,19 +16,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
-import {DSTest} from "ds-test/test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ForwardProxy} from "forward-proxy/ForwardProxy.sol";
 
 import {RwaToken} from "./RwaToken.sol";
 import {RwaTokenFactory} from "./RwaTokenFactory.sol";
 
-contract RwaTokenFactoryTest is DSTest {
+contract RwaTokenFactoryTest is Test {
     uint256 internal constant WAD = 10**18;
 
     ForwardProxy internal recipient;
     RwaTokenFactory internal tokenFactory;
     string internal constant NAME = "RWA001-Test";
     string internal constant SYMBOL = "RWA001";
+
+    event RwaTokenCreated(address indexed token, string name, string indexed symbol, address indexed recipient);
 
     function setUp() public {
         recipient = new ForwardProxy();
@@ -47,5 +49,13 @@ contract RwaTokenFactoryTest is DSTest {
         RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
         assertTrue(address(token) != address(0));
         assertEq(token.balanceOf(address(recipient)), 1 * WAD);
+    }
+
+    function testCreateRwaTokenEmitTheProperEvent() public {
+        // `token` is the 1st topic, but we cannot check it since it will only be known after calling the method.
+        vm.expectEmit(false, true, true, true);
+        emit RwaTokenCreated(address(0), NAME, SYMBOL, address(recipient));
+
+        tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
     }
 }

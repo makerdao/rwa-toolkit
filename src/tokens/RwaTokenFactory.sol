@@ -31,7 +31,7 @@ contract RwaTokenFactory {
      * @param symbol Token symbol.
      * @param recipient Token address recipient.
      */
-    event RwaTokenCreated(string name, string indexed symbol, address indexed recipient);
+    event RwaTokenCreated(address indexed token, string name, string indexed symbol, address indexed recipient);
 
     /**
      * @notice Deploy an RWA Token and mint `1 * WAD` to recipient address.
@@ -51,7 +51,7 @@ contract RwaTokenFactory {
         RwaToken token = new RwaToken(name, symbol);
         token.transfer(recipient, 1 * WAD);
 
-        emit RwaTokenCreated(name, symbol, recipient);
+        emit RwaTokenCreated(address(token), name, symbol, recipient);
         return token;
     }
 }

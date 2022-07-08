@@ -25,11 +25,6 @@ import {RwaToken} from "./RwaToken.sol";
 contract RwaTokenFactory {
     uint256 internal constant WAD = 10**18;
 
-    /// @notice registry for RWA tokens. `tokenAddresses[symbol]`
-    mapping(bytes32 => address) public tokenAddresses;
-    /// @notice list of created RWA token symbols.
-    bytes32[] public tokens;
-
     /**
      * @notice RWA Token created.
      * @param name Token name.
@@ -40,7 +35,6 @@ contract RwaTokenFactory {
 
     /**
      * @notice Deploy an RWA Token and mint `1 * WAD` to recipient address.
-     * @dev History of created tokens are stored in `tokenData` which is publicly accessible
      * @param name Token name.
      * @param symbol Token symbol.
      * @param recipient Recipient address.
@@ -50,51 +44,14 @@ contract RwaTokenFactory {
         string calldata symbol,
         address recipient
     ) public returns (RwaToken) {
-        require(recipient != address(0), "RwaTokenFactory/recipient-not-set");
         require(bytes(name).length != 0, "RwaTokenFactory/name-not-set");
         require(bytes(symbol).length != 0, "RwaTokenFactory/symbol-not-set");
-
-        bytes32 _symbol = stringToBytes32(symbol);
-        require(tokenAddresses[_symbol] == address(0), "RwaTokenFactory/symbol-already-exists");
+        require(recipient != address(0), "RwaTokenFactory/invalid-recipient");
 
         RwaToken token = new RwaToken(name, symbol);
-        tokenAddresses[_symbol] = address(token);
-        tokens.push(_symbol);
-
         token.transfer(recipient, 1 * WAD);
 
         emit RwaTokenCreated(name, symbol, recipient);
         return token;
-    }
-
-    /**
-     * @notice Gets the number of RWA Tokens created by this factory.
-     */
-    function count() external view returns (uint256) {
-        return tokens.length;
-    }
-
-    /**
-     * @notice Gets the list of symbols of all RWA Tokens created by this factory.
-     */
-    function list() external view returns (bytes32[] memory) {
-        return tokens;
-    }
-
-    /**
-     * @notice Helper function for converting string to bytes32.
-     * @dev If `source` is longer than 32 bytes (i.e.: 32 ASCII chars), then it will be truncated.
-     * @param source String to convert.
-     * @return result The numeric ASCII representation of `source`, up to 32 chars long.
-     */
-    function stringToBytes32(string calldata source) public pure returns (bytes32 result) {
-        bytes memory sourceAsBytes = bytes(source);
-        if (sourceAsBytes.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(sourceAsBytes, 32))
-        }
     }
 }

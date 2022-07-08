@@ -25,8 +25,8 @@ import {RwaTokenFactory} from "./RwaTokenFactory.sol";
 contract RwaTokenFactoryTest is DSTest {
     uint256 internal constant WAD = 10**18;
 
-    ForwardProxy recipient;
-    RwaTokenFactory tokenFactory;
+    ForwardProxy internal recipient;
+    RwaTokenFactory internal tokenFactory;
     string internal constant NAME = "RWA001-Test";
     string internal constant SYMBOL = "RWA001";
 
@@ -35,44 +35,17 @@ contract RwaTokenFactoryTest is DSTest {
         tokenFactory = new RwaTokenFactory();
     }
 
-    function testFail_nameAndSymbolRequired() public {
+    function testFailNameAndSymbolRequired() public {
         tokenFactory.createRwaToken("", "", address(this));
     }
 
-    function testFail_recipientRequired() public {
+    function testFailRecipientRequired() public {
         tokenFactory.createRwaToken(NAME, SYMBOL, address(0));
     }
 
-    function testFail_failOnAlreadyExistSymbol() public {
-        RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
-        assertTrue(address(token) != address(0));
-        tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
-    }
-
-    function test_canCreateRwaToken() public {
+    function testCanCreateRwaToken() public {
         RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
         assertTrue(address(token) != address(0));
         assertEq(token.balanceOf(address(recipient)), 1 * WAD);
-    }
-
-    function test_canGetRegistry() public {
-        RwaToken token = tokenFactory.createRwaToken(NAME, SYMBOL, address(recipient));
-        assertTrue(address(token) != address(0));
-        bytes32 symbol = tokenFactory.stringToBytes32(SYMBOL);
-        bytes32[1] memory tokens = [symbol];
-        bytes32[] memory tokensFromFactory = tokenFactory.list();
-        assertEq(tokenFactory.count(), tokens.length);
-        assertEq(tokensFromFactory[0], tokens[0]);
-        assertEq(tokenFactory.tokenAddresses(symbol), address(token));
-    }
-
-    function test_truncatesLargeStrings() public {
-        string memory str40Bytes = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
-        string memory str32Bytes = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
-
-        bytes32 truncated = tokenFactory.stringToBytes32(str40Bytes);
-        bytes32 notTruncated = tokenFactory.stringToBytes32(str32Bytes);
-
-        assertEq(truncated, notTruncated);
     }
 }

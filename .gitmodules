@@ -28,3 +28,6 @@
 [submodule "lib/dss-chain-log"]
 	path = lib/dss-chain-log
 	url = https://github.com/makerdao/dss-chain-log
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

@@ -8,7 +8,7 @@ function verify() {
   check-required-etherscan-api-key
 
   local CHAIN="$(cast chain)"
-  [ CHAIN = 'ethlive' ] && CHAIN='mainnet'
+  [ "$CHAIN" == 'ethlive' ] && CHAIN='mainnet'
 
   local RESPONSE=
   # Log the command being issued

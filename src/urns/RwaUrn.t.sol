@@ -20,7 +20,7 @@
 
 pragma solidity 0.6.12;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "ds-token/token.sol";
 import "ds-math/math.sol";
 
@@ -36,16 +36,6 @@ import {RwaInputConduit} from "../conduits/RwaInputConduit.sol";
 import {RwaOutputConduit} from "../conduits/RwaOutputConduit.sol";
 import {RwaLiquidationOracle} from "../oracles/RwaLiquidationOracle.sol";
 import {RwaUrn} from "./RwaUrn.sol";
-
-interface Hevm {
-    function warp(uint256) external;
-
-    function store(
-        address,
-        bytes32,
-        bytes32
-    ) external;
-}
 
 contract RwaUltimateRecipient {
     DSToken internal dai;
@@ -139,9 +129,7 @@ contract TryPusher is TryCaller {
     }
 }
 
-contract RwaUrnTest is DSTest, DSMath, TryPusher {
-    Hevm internal hevm;
-
+contract RwaUrnTest is Test, DSMath, TryPusher {
     DSToken internal gov;
     DSToken internal dai;
     RwaToken internal rwa;
@@ -178,8 +166,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
     }
 
     function setUp() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
+        vm.warp(604411200);
 
         // deploy governance token
         gov = new DSToken("GOV");
@@ -246,14 +233,14 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         usr.approve(rwa, address(urn), uint256(-1));
     }
 
-    function test_file() public {
+    function testFile() public {
         urn.file("outputConduit", address(123));
         assertEq(urn.outputConduit(), address(123));
         urn.file("jug", address(456));
         assertEq(address(urn.jug()), address(456));
     }
 
-    function test_unpick_and_pick_new_rec() public {
+    function testUnpickAndPickNewRec() public {
         // lock some acme and draw some dai
         usr.lock(1 ether);
         usr.draw(400 ether);
@@ -279,17 +266,17 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(newrec)), 400 ether);
     }
 
-    function test_cant_pick_unkissed_rec() public {
+    function testCantPickUnkissedRec() public {
         RwaUltimateRecipient newrec = new RwaUltimateRecipient(dai);
         assertTrue(!usr.canPick(address(newrec)));
     }
 
-    function test_lock_and_draw() public {
+    function testLockAndDraw() public {
         // check initial balances
         assertEq(dai.balanceOf(address(outConduit)), 0);
         assertEq(dai.balanceOf(address(rec)), 0);
 
-        hevm.warp(now + 10 days); // Let rate be > 1
+        vm.warp(now + 10 days); // Let rate be > 1
 
         assertEq(vat.dai(address(urn)), 0);
 
@@ -319,12 +306,12 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(rec)), 399 ether);
     }
 
-    function test_draw_exceeds_debt_ceiling() public {
+    function testDrawExceedsDebtCeiling() public {
         usr.lock(1 ether);
         assertTrue(!usr.canDraw(500 ether));
     }
 
-    function test_cant_draw_unless_hoped() public {
+    function testCantDrawUnlessHoped() public {
         usr.lock(1 ether);
 
         RwaUser rando = new RwaUser(urn, outConduit, inConduit);
@@ -336,7 +323,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(outConduit)), 100 ether);
     }
 
-    function test_partial_repay() public {
+    function testPartialRepay() public {
         usr.lock(1 ether);
         usr.draw(400 ether);
 
@@ -344,7 +331,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         usr.pick(address(rec));
         outConduit.push();
 
-        hevm.warp(now + 30 days);
+        vm.warp(now + 30 days);
 
         rec.transfer(address(inConduit), 100 ether);
         assertEq(dai.balanceOf(address(inConduit)), 100 ether);
@@ -362,7 +349,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(inConduit)), 0 ether);
     }
 
-    function test_partial_repay_fuzz(
+    function testPartialRepayFuzz(
         uint256 drawAmount,
         uint256 wipeAmount,
         uint256 drawTime,
@@ -376,7 +363,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
 
         usr.lock(1 ether);
 
-        hevm.warp(now + drawTime);
+        vm.warp(now + drawTime);
         jug.drip("acme");
 
         usr.draw(drawAmount);
@@ -385,7 +372,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         usr.pick(address(rec));
         outConduit.push();
 
-        hevm.warp(now + wipeTime);
+        vm.warp(now + wipeTime);
         jug.drip("acme");
 
         rec.transfer(address(inConduit), wipeAmount);
@@ -395,7 +382,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         usr.wipe(wipeAmount);
     }
 
-    function test_repay_rounding_fuzz(
+    function testRepayRoundingFuzz(
         uint256 drawAmt,
         uint256 drawTime,
         uint256 wipeTime
@@ -411,7 +398,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
 
         usr.lock(1 ether);
 
-        hevm.warp(now + drawTime);
+        vm.warp(now + drawTime);
         jug.drip("acme");
 
         usr.draw(drawAmt);
@@ -430,7 +417,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         usr.pick(address(rec));
         outConduit.push();
 
-        hevm.warp(now + wipeTime);
+        vm.warp(now + wipeTime);
         jug.drip("acme");
 
         (, rate, , , ) = vat.ilks("acme");
@@ -441,14 +428,16 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         }
 
         // Forcing extra DAI balance to pay accumulated fee
-        hevm.store(address(dai), keccak256(abi.encode(address(rec), uint256(3))), bytes32(uint256(fullWipeAmt)));
-        hevm.store(address(dai), bytes32(uint256(2)), bytes32(uint256(fullWipeAmt)));
-        hevm.store(
-            address(vat),
-            keccak256(abi.encode(address(daiJoin), uint256(5))),
-            bytes32(uint256(fullWipeAmt * RAY))
-        );
-        //
+        // hevm.store(address(dai), keccak256(abi.encode(address(rec), uint256(3))), bytes32(uint256(fullWipeAmt)));
+        stdstore.target(address(dai)).sig("balanceOf(address)").with_key(address(rec)).checked_write(fullWipeAmt);
+        // hevm.store(address(dai), bytes32(uint256(2)), bytes32(uint256(fullWipeAmt)));
+        stdstore.target(address(dai)).sig("totalSupply()").with_key(address(rec)).checked_write(fullWipeAmt);
+        // hevm.store(
+        //     address(vat),
+        //     keccak256(abi.encode(address(daiJoin), uint256(5))),
+        //     bytes32(uint256(fullWipeAmt * RAY))
+        // );
+        stdstore.target(address(vat)).sig("dai(address)").with_key(address(daiJoin)).checked_write(fullWipeAmt * RAY);
 
         rec.transfer(address(inConduit), fullWipeAmt);
         assertEq(dai.balanceOf(address(inConduit)), fullWipeAmt);
@@ -464,7 +453,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertTrue(newUrnVatDust - urnVatDust < RAY);
     }
 
-    function test_full_repay() public {
+    function testFullRepay() public {
         usr.lock(1 ether);
         usr.draw(400 ether);
 
@@ -484,7 +473,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(rwa.balanceOf(address(usr)), 1 ether);
     }
 
-    function test_quit() public {
+    function testQuit() public {
         usr.lock(1 ether);
         usr.draw(400 ether);
 
@@ -503,7 +492,7 @@ contract RwaUrnTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(outConduit)), 400 ether);
     }
 
-    function testFail_quit() public {
+    function testFailQuit() public {
         usr.lock(1 ether);
         usr.draw(400 ether);
 

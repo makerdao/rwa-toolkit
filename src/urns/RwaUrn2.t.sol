@@ -17,7 +17,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
-import {DSTest} from "ds-test/test.sol";
+import {Test} from "forge-std/Test.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSMath} from "ds-math/math.sol";
 
@@ -33,18 +33,6 @@ import {RwaInputConduit2} from "../conduits/RwaInputConduit2.sol";
 import {RwaOutputConduit2} from "../conduits/RwaOutputConduit2.sol";
 import {RwaLiquidationOracle} from "../oracles/RwaLiquidationOracle.sol";
 import {RwaUrn2} from "./RwaUrn2.sol";
-
-interface Hevm {
-    function warp(uint256) external;
-
-    function store(
-        address,
-        bytes32,
-        bytes32
-    ) external;
-
-    function load(address, bytes32) external returns (bytes32);
-}
 
 contract TokenUser {
     DSToken internal immutable dai;
@@ -161,11 +149,7 @@ contract RwaMate is TryCaller {
     }
 }
 
-contract RwaUrn2Test is DSTest, DSMath {
-    bytes20 internal constant CHEAT_CODE = bytes20(uint160(uint256(keccak256("hevm cheat code"))));
-
-    Hevm internal hevm;
-
+contract RwaUrn2Test is Test, DSMath {
     DSToken internal dai;
     RwaToken internal rwa;
 
@@ -202,8 +186,7 @@ contract RwaUrn2Test is DSTest, DSMath {
     }
 
     function setUp() public {
-        hevm = Hevm(address(CHEAT_CODE));
-        hevm.warp(104411200);
+        vm.warp(104411200);
 
         rwa = new RwaToken(name, symbol);
 
@@ -314,7 +297,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         assertEq(dai.balanceOf(address(outConduit)), 0);
         assertEq(dai.balanceOf(address(rec)), 0);
 
-        hevm.warp(block.timestamp + secs); // Let rate be > 1
+        vm.warp(block.timestamp + secs); // Let rate be > 1
 
         assertEq(vat.dai(address(urn)), 0);
 
@@ -373,7 +356,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         op.pick(address(rec));
         mate.pushOut();
 
-        hevm.warp(block.timestamp + 30 days);
+        vm.warp(block.timestamp + 30 days);
 
         rec.transfer(address(inConduit), 100 ether);
 
@@ -404,13 +387,13 @@ contract RwaUrn2Test is DSTest, DSMath {
 
         op.lock(1 ether);
 
-        hevm.warp(now + drawTime);
+        vm.warp(now + drawTime);
         jug.drip("RWA001-A");
         op.draw(drawAmount);
         op.pick(address(rec));
         mate.pushOut();
 
-        hevm.warp(now + wipeTime);
+        vm.warp(now + wipeTime);
         jug.drip("RWA001-A");
         rec.transfer(address(inConduit), wipeAmount);
         assertEq(dai.balanceOf(address(inConduit)), wipeAmount);
@@ -434,7 +417,7 @@ contract RwaUrn2Test is DSTest, DSMath {
 
         op.lock(1 ether);
 
-        hevm.warp(block.timestamp + drawTime);
+        vm.warp(block.timestamp + drawTime);
         jug.drip("RWA001-A");
 
         op.draw(drawAmount);
@@ -453,7 +436,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         op.pick(address(rec));
         mate.pushOut();
 
-        hevm.warp(block.timestamp + wipeTime);
+        vm.warp(block.timestamp + wipeTime);
         jug.drip("RWA001-A");
 
         (, rate, , , ) = vat.ilks("RWA001-A");
@@ -468,11 +451,16 @@ contract RwaUrn2Test is DSTest, DSMath {
         /////////////////////////////////////////////////*/
 
         // Overwrite `balanceOf` for `rec` on the Dai token contract.
-        hevm.store(address(dai), keccak256(abi.encode(address(rec), 3)), bytes32(fullWipeAmount));
+        // hevm.store(address(dai), keccak256(abi.encode(address(rec), 3)), bytes32(fullWipeAmount));
+        stdstore.target(address(dai)).sig("balanceOf(address)").with_key(address(rec)).checked_write(fullWipeAmount);
         // Overwrite `totalSupply` on the Dai Token contract.
-        hevm.store(address(dai), bytes32(uint256(2)), bytes32(uint256(fullWipeAmount)));
+        // hevm.store(address(dai), bytes32(uint256(2)), bytes32(uint256(fullWipeAmount)));
+        stdstore.target(address(dai)).sig("totalSupply()").checked_write(fullWipeAmount);
         // Overwite the `dai` balance mapping for `rec` on the Vat contract.
-        hevm.store(address(vat), keccak256(abi.encode(address(daiJoin), 5)), bytes32((fullWipeAmount * RAY)));
+        // hevm.store(address(vat), keccak256(abi.encode(address(daiJoin), 5)), bytes32((fullWipeAmount * RAY)));
+        stdstore.target(address(vat)).sig("dai(address)").with_key(address(daiJoin)).checked_write(
+            fullWipeAmount * RAY
+        );
 
         /*///////////////////////////////////////////////*/
 
@@ -588,7 +576,7 @@ contract RwaUrn2Test is DSTest, DSMath {
         op.pick(address(rec));
         mate.pushOut();
 
-        hevm.warp(block.timestamp + 30 days);
+        vm.warp(block.timestamp + 30 days);
 
         rec.transfer(address(inConduit), 100 ether);
 

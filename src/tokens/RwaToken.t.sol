@@ -21,31 +21,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
-import {DSTest} from "ds-test/test.sol";
+import {Test} from "forge-std/Test.sol";
 import {RwaToken} from "./RwaToken.sol";
 
-contract RwaTokenTest is DSTest {
-    uint256 constant WAD = 10**18;
+contract RwaTokenTest is Test {
+    uint256 internal constant WAD = 10**18;
 
-    RwaToken token;
-    uint256 expectedTokensMinted = 1 * WAD;
-    string name = "RWA001-Test";
-    string symbol = "RWA001";
+    RwaToken internal token;
+    uint256 internal expectedTokensMinted = 1 * WAD;
+    string internal name = "RWA001-Test";
+    string internal symbol = "RWA001";
 
     function setUp() public {
         token = new RwaToken(name, symbol);
     }
 
-    function test_tokenAndSymbol() public {
+    function testTokenAndSymbol() public {
         assertEq(token.name(), name);
         assertEq(token.symbol(), symbol);
     }
 
-    function test_totalSupplyHardcoded() public {
+    function testTotalSupplyHardcoded() public {
         assertEq(token.totalSupply(), expectedTokensMinted);
     }
 
-    function test_tokenMinted() public {
+    function testTokenMinted() public {
         assertEq(token.balanceOf(address(this)), expectedTokensMinted);
     }
 }

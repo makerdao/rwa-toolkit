@@ -20,7 +20,7 @@
 
 pragma solidity 0.6.12;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "ds-token/token.sol";
 import "ds-math/math.sol";
 
@@ -36,16 +36,6 @@ import {RwaInputConduit} from "../conduits/RwaInputConduit.sol";
 import {RwaOutputConduit} from "../conduits/RwaOutputConduit.sol";
 import {RwaUrn} from "../urns/RwaUrn.sol";
 import {RwaLiquidationOracle} from "./RwaLiquidationOracle.sol";
-
-interface Hevm {
-    function warp(uint256) external;
-
-    function store(
-        address,
-        bytes32,
-        bytes32
-    ) external;
-}
 
 contract RwaUltimateRecipient {
     DSToken internal dai;
@@ -139,9 +129,7 @@ contract TryPusher is TryCaller {
     }
 }
 
-contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
-    Hevm internal hevm;
-
+contract RwaLiquidationOracleTest is Test, DSMath, TryPusher {
     DSToken internal gov;
     DSToken internal dai;
     RwaToken internal rwa;
@@ -178,8 +166,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
     }
 
     function setUp() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
+        vm.warp(604411200);
 
         // deploy governance token
         gov = new DSToken("GOV");
@@ -246,7 +233,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         usr.approve(rwa, address(urn), uint256(-1));
     }
 
-    function test_oracle_cure() public {
+    function testOracleCure() public {
         usr.lock(1 ether);
         assertTrue(usr.canDraw(10 ether));
 
@@ -257,7 +244,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         // not able to borrow
         assertTrue(!usr.canDraw(10 ether));
 
-        hevm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 1 weeks);
 
         oracle.cure("acme");
         vat.file("acme", "line", rad(ceiling));
@@ -272,16 +259,16 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(rec)), 100 ether);
     }
 
-    function testFail_oracle_cure_unknown_ilk() public {
+    function testFailOracleCureUnknownIlk() public {
         // unknown ilk ecma
         oracle.cure("ecma");
     }
 
-    function testFail_oracle_cure_not_in_remediation() public {
+    function testFailOracleCureNotInRemediation() public {
         oracle.cure("acme");
     }
 
-    function testFail_oracle_cure_not_in_remediation_anymore() public {
+    function testFailOracleCureNotInRemediationAnymore() public {
         usr.lock(1 ether);
         assertTrue(usr.canDraw(10 ether));
 
@@ -292,7 +279,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         // not able to borrow
         assertTrue(!usr.canDraw(10 ether));
 
-        hevm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 1 weeks);
 
         oracle.cure("acme");
         vat.file("acme", "line", rad(ceiling));
@@ -308,7 +295,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         oracle.cure("acme");
     }
 
-    function test_oracle_cull() public {
+    function testOracleCull() public {
         usr.lock(1 ether);
         // not at full utilisation
         usr.draw(200 ether);
@@ -320,11 +307,11 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         // not able to borrow
         assertTrue(!usr.canDraw(10 ether));
 
-        hevm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 1 weeks);
         // still in remeditation period
         assertTrue(oracle.good("acme"));
 
-        hevm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 2 weeks);
 
         assertEq(vat.gem("acme", address(oracle)), 0);
         // remediation period has elapsed
@@ -347,7 +334,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         assertEq(spot, 0);
     }
 
-    function test_oracle_unremedied_loan_is_not_good() public {
+    function testOracleUnremediedLoanIsNotGood() public {
         usr.lock(1 ether);
         usr.draw(200 ether);
 
@@ -355,11 +342,11 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         oracle.tell("acme");
         assertTrue(oracle.good("acme"));
 
-        hevm.warp(block.timestamp + 3 weeks);
+        vm.warp(block.timestamp + 3 weeks);
         assertTrue(!oracle.good("acme"));
     }
 
-    function test_oracle_cull_two_urns() public {
+    function testOracleCullTwoUrns() public {
         RwaUrn urn2 = new RwaUrn(address(vat), address(jug), address(gemJoin), address(daiJoin), address(outConduit));
         gemJoin.rely(address(urn2));
         RwaUser usr2 = new RwaUser(urn2, outConduit, inConduit);
@@ -381,7 +368,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         assertTrue(!usr.canDraw(1 ether));
         assertTrue(!usr2.canDraw(1 ether));
 
-        hevm.warp(block.timestamp + 3 weeks);
+        vm.warp(block.timestamp + 3 weeks);
 
         oracle.cull("acme", address(urn));
         assertEq(vat.sin(vow), rad(100 ether));
@@ -389,7 +376,7 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         assertEq(vat.sin(vow), rad(200 ether));
     }
 
-    function test_oracle_bump() public {
+    function testOracleBump() public {
         usr.lock(1 ether);
         usr.draw(400 ether);
 
@@ -419,12 +406,12 @@ contract RwaLiquidationOracleTest is DSTest, DSMath, TryPusher {
         assertEq(dai.balanceOf(address(rec)), 600 ether);
     }
 
-    function testFail_oracle_bump_unknown_ilk() public {
+    function testFailOracleBumpUnknownIlk() public {
         // unknown ilk ecma
         oracle.bump("ecma", wmul(ceiling + 200 ether, 1.1 ether));
     }
 
-    function testFail_oracle_bump_in_remediation() public {
+    function testFailOracleBumpInRemediation() public {
         vat.file("acme", "line", 0);
         oracle.tell("acme");
         oracle.bump("acme", wmul(ceiling + 200 ether, 1.1 ether));

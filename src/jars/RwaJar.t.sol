@@ -16,7 +16,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
-import {DSTest} from "ds-test/test.sol";
+import {Test} from "forge-std/Test.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSMath} from "ds-math/math.sol";
 
@@ -34,11 +34,7 @@ interface Hevm {
     ) external;
 }
 
-contract RwaJarTest is DSTest, DSMath {
-    bytes20 internal constant CHEAT_CODE = bytes20(uint160(uint256(keccak256("hevm cheat code"))));
-
-    Hevm internal hevm;
-
+contract RwaJarTest is Test, DSMath {
     Vat internal vat;
     ChainLog internal chainlog;
     DaiJoin internal daiJoin;
@@ -48,8 +44,6 @@ contract RwaJarTest is DSTest, DSMath {
     RwaJar internal jar;
 
     function setUp() public {
-        hevm = Hevm(address(CHEAT_CODE));
-
         chainlog = new ChainLog();
         vat = new Vat();
         dai = new DSToken("Dai");
@@ -64,7 +58,7 @@ contract RwaJarTest is DSTest, DSMath {
         jar = new RwaJar(address(chainlog));
     }
 
-    function test_void_sends_all_dai_balance_to_the_vow(uint128 amount) public {
+    function testVoidSendsAllDaiBalanceToTheVow(uint128 amount) public {
         // Make sure amount is not zero
         amount = (amount % (type(uint128).max - 1)) + 1;
 
@@ -77,11 +71,11 @@ contract RwaJarTest is DSTest, DSMath {
         assertEq(vat.dai(VOW), _rad(amount), "Vow internal balance not equals to the amount transfereed");
     }
 
-    function testFail_void_when_dai_balance_is_zero() public {
+    function testFailVoidWhenDaiBalanceIsZero() public {
         jar.void();
     }
 
-    function test_toss_pulls_dai_from_sender_into_the_vow(uint128 amount) public {
+    function testTossPullsDaiFromSenderIntoTheVow(uint128 amount) public {
         // Make sure amount is not zero
         amount = (amount % (type(uint128).max - 1)) + 1;
 
@@ -102,13 +96,20 @@ contract RwaJarTest is DSTest, DSMath {
 
     function _createFakeDai(address usr, uint256 wad) private {
         // Set initial balance for `usr` in the vat
-        hevm.store(address(vat), keccak256(abi.encode(usr, 5)), bytes32(_rad(wad)));
+        // hevm.store(address(vat), keccak256(abi.encode(usr, 5)), bytes32(_rad(wad)));
+        stdstore.target(address(vat)).sig("dai(address)").with_key(usr).checked_write(_rad(wad));
         // Authorizes daiJoin to operate on behalf of the user in the vat
-        hevm.store(
-            address(vat),
-            keccak256(abi.encode(address(daiJoin), keccak256(abi.encode(usr, 1)))),
-            bytes32(uint256(1))
-        );
+        // hevm.store(
+        //     address(vat),
+        //     keccak256(abi.encode(address(daiJoin), keccak256(abi.encode(usr, 1)))),
+        //     bytes32(uint256(1))
+        // );
+        stdstore
+            .target(address(vat))
+            .sig("can(address,address)")
+            .with_key(usr)
+            .with_key(address(daiJoin))
+            .checked_write(uint256(1));
         // Converts the minted Dai into ERC-20 Dai and sends it to `usr`.
         daiJoin.exit(usr, wad);
     }

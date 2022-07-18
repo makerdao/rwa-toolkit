@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  FOUNDRY_PROFILE: ci
+  # For fork mode only
+  # FORK_URL: ${{ secrets.ALCHEMY_GOERLI_ETH_RPC_URL }}
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry Project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge Build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      # Standalone mode
+      - name: Run Forge Tests
+        run: |
+          forge test -vvv
+        id: test
+
+      # Fork mode
+      # - name: Run Forge Tests
+      #   run: |
+      #     forge test -vvv --fork-url=$FORK_URL
+      #   id: test

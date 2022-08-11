@@ -32,11 +32,11 @@ import {Vow}              from "dss/vow.sol";
 import {GemJoin, DaiJoin} from "dss/join.sol";
 import {Dai}              from "dss/dai.sol";
 
-import {RwaInputConduit} from "../conduits/RwaInputConduit3.sol";
+import {RwaInputConduit3}  from "./RwaInputConduit3.sol";
 // import {RwaOutputConduit} from "../conduits/RwaOutputConduit3.sol";
 
-import "../psm.sol";
-import "../join-5-auth.sol";
+import {DssPsm}           from "dss-psm/psm.sol";
+import {AuthGemJoin5}     from "dss-psm/join-5-auth.sol";
 
 
 contract TestToken is DSToken {
@@ -70,29 +70,13 @@ contract TestVow is Vow {
     }
 }
 
-contract User {
-
-    AuthGemJoin5 gemJoin;
-    RwaInputConduit3 inputConduit;
-
-    constructor(AuthGemJoin5 _gemJoin, RwaInputConduit3 _inputConduit) public {
-        inputConduit = _inputConduit;
-        gemJoin = _gemJoin;
+contract TestUrn {
+    function balance(address gem) public view returns (uint256) {
+        return DSToken(gem).balanceOf(address(this));
     }
-
-    function push(uint256 wad) public {
-        DSToken(address(gemJoin.gem())).approve(address(gemJoin));
-        psm.sellGem(address(this), wad);
-    }
-
-    function buyGem(uint256 wad) public {
-        dai.approve(address(psm), uint256(-1));
-        psm.buyGem(address(this), wad);
-    }
-
 }
 
-contract RwaUrnTest is Test, DSMath, TryPusher {
+contract RwaInputConduit3Test is Test, DSMath {
     address me;
 
     TestVat vat;
@@ -105,16 +89,16 @@ contract RwaUrnTest is Test, DSMath, TryPusher {
 
     AuthGemJoin5 gemA;
     DssPsm psmA;
-
-    // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
-    bytes20 constant CHEAT_CODE =
-        bytes20(uint160(uint256(keccak256('hevm cheat code'))));
+    RwaInputConduit3 inputConduit;
+    TestUrn testUrn;
 
     bytes32 constant ilk = "usdx";
 
     uint256 constant TOLL_ONE_PCT = 10 ** 16;
     uint256 constant USDX_WAD = 10 ** 6;
 
+    event Rely(address indexed usr);
+    
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
     }
@@ -123,9 +107,7 @@ contract RwaUrnTest is Test, DSMath, TryPusher {
         return wad * 10 ** 27;
     }
 
-    function setUp() public {
-        hevm = Hevm(address(CHEAT_CODE));
-
+    function setUpMCDandPSM() internal {
         me = address(this);
 
         vat = new TestVat();
@@ -162,5 +144,32 @@ contract RwaUrnTest is Test, DSMath, TryPusher {
 
         vat.file(ilk, "line", rad(1000 ether));
         vat.file("Line",      rad(1000 ether));
+    }
+
+    function setUp() public {
+        setUpMCDandPSM();
+
+        testUrn = new TestUrn();
+        inputConduit = new RwaInputConduit3(address(dai), address(usdx), address(psmA), address(testUrn));
+    }
+
+    function testRevertOnDeployConduitWithWrongGem() public {
+        vm.expectRevert("RwaInputConduit3/wrong-gem-for-psm");
+        new RwaInputConduit3(address(dai), address(me), address(psmA), address(testUrn));
+    }
+
+    function testSetWardAndEmitRely() public {
+        vm.expectEmit(true, false, false, false);
+        emit Rely(address(this));
+
+        RwaInputConduit3 c = new RwaInputConduit3(address(dai), address(usdx), address(psmA), address(testUrn));
+
+        assertEq(c.wards(address(this)), 1);
+    }
+
+    function testPsmWorks() public {
+        assertEq(usdx.balanceOf(me), 1000 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(gemA)), 0);
     }
 }

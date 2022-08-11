@@ -18,7 +18,8 @@
 pragma solidity 0.6.12;
 
 import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
-import {PsmAbstract} from "dss-interfaces/dapp/PsmAbstract.sol";
+import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
+import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
@@ -172,6 +173,6 @@ contract RwaInputConduit3 {
         // swap gem to dai through PSM and push it
         psm.sellGem(address(to), balance);
 
-        emit Push(to, wad);
+        emit Push(to, balance);
     }
 }

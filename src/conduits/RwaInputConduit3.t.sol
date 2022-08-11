@@ -98,7 +98,11 @@ contract RwaInputConduit3Test is Test, DSMath {
     uint256 constant USDX_WAD = 10 ** 6;
 
     event Rely(address indexed usr);
-    
+    event Deny(address indexed usr);
+    event Mate(address indexed usr);
+    event Hate(address indexed usr);
+    event Push(address indexed to, uint256 wad);
+
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
     }
@@ -151,14 +155,20 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         testUrn = new TestUrn();
         inputConduit = new RwaInputConduit3(address(dai), address(usdx), address(psmA), address(testUrn));
+        inputConduit.mate(me);
     }
 
     function testRevertOnDeployConduitWithWrongGem() public {
         vm.expectRevert("RwaInputConduit3/wrong-gem-for-psm");
-        new RwaInputConduit3(address(dai), address(me), address(psmA), address(testUrn));
+        new RwaInputConduit3(address(dai), address(0), address(psmA), address(testUrn));
     }
 
-    function testSetWardAndEmitRely() public {
+    function testRevertOnDeployConduitWithWrongDai() public {
+        vm.expectRevert("RwaInputConduit3/wrong-dai-for-psm");
+        new RwaInputConduit3(address(0), address(usdx), address(psmA), address(testUrn));
+    }
+
+    function testSetWardAndEmitRelyOnDeploy() public {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
@@ -167,9 +177,120 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(c.wards(address(this)), 1);
     }
 
-    function testPsmWorks() public {
+    function testCanRelyDeny() public {
+        assertEq(inputConduit.wards(address(0)), 0);
+
+        vm.expectEmit(true, false, false, false);
+        emit Rely(address(0));
+
+        inputConduit.rely(address(0));
+
+        assertEq(inputConduit.wards(address(0)), 1);
+
+        vm.expectEmit(true, false, false, false);
+        emit Deny(address(0));
+
+        inputConduit.deny(address(0));
+
+        assertEq(inputConduit.wards(address(0)), 0);
+    }
+
+    function testCanMateHate() public {
+        assertEq(inputConduit.may(address(0)), 0);
+
+        vm.expectEmit(true, false, false, false);
+        emit Mate(address(0));
+
+        inputConduit.mate(address(0));
+
+        assertEq(inputConduit.may(address(0)), 1);
+
+        vm.expectEmit(true, false, false, false);
+        emit Hate(address(0));
+
+        inputConduit.hate(address(0));
+
+        assertEq(inputConduit.may(address(0)), 0);
+    }
+
+    function testRevertOnUnauthorizedMethods() public {
+        vm.startPrank(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.rely(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.deny(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.hate(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.mate(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-mate");
+        inputConduit.push();
+
+        vm.expectRevert("RwaInputConduit3/not-mate");
+        inputConduit.push(100);
+    }
+
+    function testRevertPushWIthZeroAmount() public {
+        vm.expectRevert("RwaInputConduit3/not-positive-amount");
+        inputConduit.push(0);
+    }
+
+    function testRevertPushIfInsufficientBalance() public {
+        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
+        inputConduit.push();
+        
+        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
+        inputConduit.push(100);
+        
+        usdx.transfer(address(inputConduit), 50 * USDX_WAD);
+        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
+        inputConduit.push(51 * USDX_WAD);
+    }
+
+    function testPush() public {
         assertEq(usdx.balanceOf(me), 1000 * USDX_WAD);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(usdx.balanceOf(address(gemA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_WAD);
+
+        assertEq(usdx.balanceOf(me), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(gemA)), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 500 ether);
+    }
+
+      function testPushAmount() public {
+        assertEq(usdx.balanceOf(me), 1000 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(gemA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_WAD);
+
+        assertEq(usdx.balanceOf(me), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 400 ether);
+        inputConduit.push(400 * USDX_WAD);
+
+        assertEq(usdx.balanceOf(address(gemA)), 400 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(inputConduit)), 100 * USDX_WAD);
+        assertEq(testUrn.balance(address(dai)), 400 ether);
     }
 }

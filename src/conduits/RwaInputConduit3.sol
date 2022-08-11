@@ -31,6 +31,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - Require PSM and corresponding GEM addresses in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
  */
 contract RwaInputConduit3 {
@@ -90,6 +91,7 @@ contract RwaInputConduit3 {
         to = _to;
 
         require(GemJoinAbstract(psm.gemJoin()).gem() == _gem, "RwaInputConduit3/wrong-gem-for-psm");
+        require(address(psm.dai()) == _dai, "RwaInputConduit3/wrong-dai-for-psm");
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -137,28 +139,34 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Internal method to pushes WAD amount of contract Dai balance into RwaUrn address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @notice Internal method which:
+     *  - Approve PSM gemJoin Adapter with WAD amount of GEM
+     *  - Swap GEM to DAI through PSM
+     *  - Push DAI to Recipient address (to)
+     * @param wad Amount to swap and push
      */
-    function _swapAndPush(uint256 wad) internal {        
-        // swap gem to dai through PSM and push it
-        psm.sellGem(address(to), wad);
+    function _swapAndPush(uint256 wad) internal {
+        gem.approve(address(psm.gemJoin()), wad);
+        psm.sellGem(address(this), wad);
 
+        uint256 balance = dai.balanceOf(address(this));
+        dai.transfer(to, balance);
+
+        emit Push(to, balance);
     }
 
     /**
-     * @notice Method to swap WAD amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
+     * @notice Method to swap WAD amount of USDC contract balance to DAI through PSM and push it to Recipient address (to).
      * @dev `msg.sender` must first receive push acess through mate().
+     * @param wad Amount to swap and push
      */
      function push(uint256 wad) public {
         require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
+        require(wad > 0, "RwaInputConduit3/not-positive-amount");
         uint256 balance = gem.balanceOf(address(this));
         require(balance >= wad, "RwaInputConduit3/insufficient-gem-balance");
 
-        // swap gem to dai through PSM and push it
-        psm.sellGem(address(to), wad);
-
-        emit Push(to, wad);
+        _swapAndPush(wad);
     }
 
     /**
@@ -170,9 +178,6 @@ contract RwaInputConduit3 {
         uint256 balance = gem.balanceOf(address(this));
         require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
 
-        // swap gem to dai through PSM and push it
-        psm.sellGem(address(to), balance);
-
-        emit Push(to, balance);
+        _swapAndPush(balance);
     }
 }

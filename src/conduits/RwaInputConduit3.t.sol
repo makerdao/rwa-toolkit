@@ -96,6 +96,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
     uint256 constant TOLL_ONE_PCT = 10 ** 16;
     uint256 constant USDX_WAD = 10 ** 6;
+    uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_WAD;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -123,7 +124,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         vow = new TestVow(address(vat), address(0), address(0));
 
         usdx = new TestToken("USDX", 6);
-        usdx.mint(1000 * USDX_WAD);
+        usdx.mint(USDX_MINT_AMOUNT);
 
         vat.init(ilk);
 
@@ -253,13 +254,13 @@ contract RwaInputConduit3Test is Test, DSMath {
     }
 
     function testPush() public {
-        assertEq(usdx.balanceOf(me), 1000 * USDX_WAD);
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(usdx.balanceOf(address(gemA)), 0);
 
         usdx.transfer(address(inputConduit), 500 * USDX_WAD);
 
-        assertEq(usdx.balanceOf(me), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_WAD);
         assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
 
         assertEq(testUrn.balance(address(dai)), 0);
@@ -273,14 +274,14 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(testUrn.balance(address(dai)), 500 ether);
     }
 
-      function testPushAmount() public {
-        assertEq(usdx.balanceOf(me), 1000 * USDX_WAD);
+    function testPushAmount() public {
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(usdx.balanceOf(address(gemA)), 0);
 
         usdx.transfer(address(inputConduit), 500 * USDX_WAD);
 
-        assertEq(usdx.balanceOf(me), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_WAD);
         assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
 
         assertEq(testUrn.balance(address(dai)), 0);
@@ -292,5 +293,24 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(address(gemA)), 400 * USDX_WAD);
         assertEq(usdx.balanceOf(address(inputConduit)), 100 * USDX_WAD);
         assertEq(testUrn.balance(address(dai)), 400 ether);
+    }
+
+    function testRevertOnSwapAboveLine() public {
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(gemA)), 0);
+
+        usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
+
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectRevert("Vat/ceiling-exceeded");
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+        assertEq(testUrn.balance(address(dai)), 0);
     }
 }

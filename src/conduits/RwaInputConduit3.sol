@@ -48,9 +48,11 @@ contract RwaInputConduit3 {
     mapping(address => uint256) public may;
 
     /// @notice PSM GEM token contract address
-    DSTokenAbstract public gem;
+    DSTokenAbstract immutable public gem;
     /// @notice PSM contract address
-    PsmAbstract public psm;
+    PsmAbstract immutable public psm;
+    /// @notice Exit address
+    address public quitAddress;
 
     /**
      * @notice `usr` was granted admin access.
@@ -78,29 +80,47 @@ contract RwaInputConduit3 {
      * @param wad The amount of Dai
      */
     event Push(address indexed to, uint256 wad);
+    /**
+     * @notice A contract parameter was updated.
+     * @param what The changed parameter name. Currently the supported values are: "quitAddress".
+     * @param data The new value of the parameter.
+     */
+    event File(bytes32 indexed what, address data);
+    /**
+     * @notice The conduit outstanding gem balance was flushed out to `exitAddress`.
+     * @param quitAddress The quiteAddress address.
+     * @param wad The amount flushed out.
+     */
+    event Quit(address indexed quitAddress, uint256 wad);
+
+    modifier auth() {
+        require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
+        _;
+    }
 
     /**
      * @notice Define addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
      * @param _to RwaUrn contract address.
      */
-    constructor(address _psm, address _to) public {
+    constructor(address _psm, address _to, address _quitAddress) public {
+        DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());
-        gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
+        gem = _gem;
         to = _to;
+        quitAddress = _quitAddress;
 
         // Give unlimited approve to PSM gemjoin
-        gem.approve(address(psm.gemJoin()), 2**256 - 1);
+        _gem.approve(address(PsmAbstract(_psm).gemJoin()), 2**256 - 1);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
-    modifier auth() {
-        require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
-        _;
-    }
+    /*//////////////////////////////////
+               Authorization
+    //////////////////////////////////*/
 
     /**
      * @notice Grants `usr` admin access to this contract.
@@ -138,6 +158,26 @@ contract RwaInputConduit3 {
         emit Hate(usr);
     }
 
+    /*//////////////////////////////////
+               Administration
+    //////////////////////////////////*/
+
+    /**
+     * @notice Updates a contract parameter.
+     * @param what The changed parameter name. `"quitAddress"`
+     * @param data The new value of the parameter.
+     */
+    function file(bytes32 what, address data) external auth {
+        if (what == "quitAddress") {
+            require(data != address(0), "RwaInputConduit3/invalid-quit-address");
+            quitAddress = data;
+        } else {
+            revert("RwaInputConduit3/unrecognised-param");
+        }
+
+        emit File(what, data);
+    }
+
     /**
      * @notice Internal method which:
      *  - Approve PSM gemJoin Adapter with WAD amount of GEM
@@ -158,11 +198,22 @@ contract RwaInputConduit3 {
      * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
-     function push() public {
+     function push() external {
         require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
         uint256 balance = gem.balanceOf(address(this));
         require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
 
         _swapAndPush(balance);
+    }
+
+     /**
+     * @notice Flushes out any GEM balance to `quitAddress` address.
+     * @dev Can only be called by an admin.
+     */
+    function quit() external auth {
+        uint256 wad = gem.balanceOf(address(this));
+
+        gem.transfer(quitAddress, wad);
+        emit Quit(quitAddress, wad);
     }
 }

@@ -103,6 +103,8 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Mate(address indexed usr);
     event Hate(address indexed usr);
     event Push(address indexed to, uint256 wad);
+    event File(bytes32 indexed what, address data);
+    event Quit(address indexed quiteAddress, uint256 wad);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
@@ -155,7 +157,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = new TestUrn();
-        inputConduit = new RwaInputConduit3(address(psmA), address(testUrn));
+        inputConduit = new RwaInputConduit3(address(psmA), address(testUrn), address(this));
         inputConduit.mate(me);
     }
 
@@ -163,7 +165,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn), address(this));
 
         assertEq(c.wards(address(this)), 1);
     }
@@ -172,7 +174,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.allowance(address(inputConduit), address(joinA)), 2**256 - 1);
     }
 
-    function testCanRelyDeny() public {
+    function testRelyDeny() public {
         assertEq(inputConduit.wards(address(0)), 0);
 
         vm.expectEmit(true, false, false, false);
@@ -190,7 +192,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(inputConduit.wards(address(0)), 0);
     }
 
-    function testCanMateHate() public {
+    function testMateHate() public {
         assertEq(inputConduit.may(address(0)), 0);
 
         vm.expectEmit(true, false, false, false);
@@ -208,6 +210,23 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(inputConduit.may(address(0)), 0);
     }
 
+    function testFile() public {
+        assertEq(inputConduit.quitAddress(), address(this));
+
+        address quitAddress = vm.addr(1);
+        vm.expectEmit(true, true, false, false);
+        emit File(bytes32("quitAddress"), quitAddress);
+
+        inputConduit.file(bytes32("quitAddress"), quitAddress);
+
+        assertEq(inputConduit.quitAddress(), quitAddress);
+    }
+
+    function testRevertOnFileUnrecognisedParam() public {
+        vm.expectRevert("RwaInputConduit3/unrecognised-param");
+        inputConduit.file(bytes32("to"), address(0));
+    }
+
     function testRevertOnUnauthorizedMethods() public {
         vm.startPrank(address(0));
 
@@ -223,8 +242,11 @@ contract RwaInputConduit3Test is Test, DSMath {
         vm.expectRevert("RwaInputConduit3/not-authorized");
         inputConduit.mate(address(0));
 
-        vm.expectRevert("RwaInputConduit3/not-mate");
-        inputConduit.push();
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.file(bytes32("quitAddress"), address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.quit();
     }
 
     function testRevertOnNotMateMethods() public {
@@ -277,5 +299,17 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
         assertEq(testUrn.balance(address(dai)), 0);
+    }
+
+    function testQuit() public {
+        usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
+
+        assertEq(inputConduit.quitAddress(), me);
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+
+        inputConduit.quit();
+
+        assertEq(usdx.balanceOf(inputConduit.quitAddress()), USDX_MINT_AMOUNT);
     }
 }

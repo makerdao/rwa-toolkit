@@ -33,6 +33,8 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
+ *  - The `quit` method which allow to move outstanding GEM balance to `quitAddress`. Can be called only by admin.
+ *  - The `file` method which allow to update `quiteAddress`. Can be called only by admin.
  */
 contract RwaInputConduit3 {
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
@@ -178,21 +180,9 @@ contract RwaInputConduit3 {
         emit File(what, data);
     }
 
-    /**
-     * @notice Internal method which:
-     *  - Approve PSM gemJoin Adapter with WAD amount of GEM
-     *  - Swap GEM to DAI through PSM
-     *  - Push DAI to Recipient address (to)
-     * @param gemAmount GEM Amount to swap
-     */
-    function _swapAndPush(uint256 gemAmount) internal {
-        psm.sellGem(address(this), gemAmount);
-
-        uint256 balance = dai.balanceOf(address(this));
-        dai.transfer(to, balance);
-
-        emit Push(to, balance);
-    }
+     /*//////////////////////////////////
+               Operation
+    //////////////////////////////////*/
 
     /**
      * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
@@ -203,7 +193,12 @@ contract RwaInputConduit3 {
         uint256 balance = gem.balanceOf(address(this));
         require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
 
-        _swapAndPush(balance);
+        psm.sellGem(address(this), balance);
+
+        uint256 daiBalance = dai.balanceOf(address(this));
+        dai.transfer(to, daiBalance);
+
+        emit Push(to, daiBalance);
     }
 
      /**

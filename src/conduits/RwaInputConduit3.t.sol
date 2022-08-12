@@ -94,7 +94,6 @@ contract RwaInputConduit3Test is Test, DSMath {
 
     bytes32 constant ilk = "usdx";
 
-    uint256 constant TOLL_ONE_PCT = 10 ** 16;
     uint256 constant USDX_BASE_UNIT = 10 ** 6;
     uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_BASE_UNIT;
 

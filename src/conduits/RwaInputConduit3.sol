@@ -33,8 +33,8 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
- *  - The `quit` method which allow to move outstanding GEM balance to `quitAddress`. Can be called only by admin.
- *  - The `file` method which allow to update `quiteAddress`. Can be called only by admin.
+ *  - The `quit` method allows moving outstanding GEM balance to `quitAddress`. It can be called only by the admin.
+ *  - The `file` method allows updating `quiteAddress`. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
@@ -114,7 +114,7 @@ contract RwaInputConduit3 {
         quitAddress = _quitAddress;
 
         // Give unlimited approve to PSM gemjoin
-        _gem.approve(address(PsmAbstract(_psm).gemJoin()), 2**256 - 1);
+        _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);

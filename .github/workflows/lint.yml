@@ -1,0 +1,23 @@
+name: Linting
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  lint:
+    strategy:
+      fail-fast: true
+
+    name: Lint Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        # The linter won't run on submodules
+        # with:
+        #   submodules: recursive
+      - uses: creyD/prettier_action@v4.2
+        with:
+          prettier_options: --check .
+          dry: True

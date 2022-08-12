@@ -25,26 +25,23 @@ import "ds-token/token.sol";
 import "ds-math/math.sol";
 import "ds-value/value.sol";
 
-import {Vat}              from "dss/vat.sol";
-import {Jug}              from "dss/jug.sol";
-import {Spotter}          from "dss/spot.sol";
-import {Vow}              from "dss/vow.sol";
+import {Vat} from "dss/vat.sol";
+import {Jug} from "dss/jug.sol";
+import {Spotter} from "dss/spot.sol";
+import {Vow} from "dss/vow.sol";
 import {GemJoin, DaiJoin} from "dss/join.sol";
-import {Dai}              from "dss/dai.sol";
+import {Dai} from "dss/dai.sol";
 
-import {RwaInputConduit3}  from "./RwaInputConduit3.sol";
+import {RwaInputConduit3} from "./RwaInputConduit3.sol";
 // import {RwaOutputConduit} from "../conduits/RwaOutputConduit3.sol";
 
-import {DssPsm}           from "dss-psm/psm.sol";
-import {AuthGemJoin5}     from "dss-psm/join-5-auth.sol";
-
+import {DssPsm} from "dss-psm/psm.sol";
+import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 
 contract TestToken is DSToken {
-
     constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
         decimals = decimals_;
     }
-
 }
 
 contract TestVat is Vat {
@@ -54,16 +51,22 @@ contract TestVat is Vat {
 }
 
 contract TestVow is Vow {
-    constructor(address vat, address flapper, address flopper)
-        public Vow(vat, flapper, flopper) {}
+    constructor(
+        address vat,
+        address flapper,
+        address flopper
+    ) public Vow(vat, flapper, flopper) {}
+
     // Total deficit
     function Awe() public view returns (uint256) {
         return vat.sin(address(this));
     }
+
     // Total surplus
     function Joy() public view returns (uint256) {
         return vat.dai(address(this));
     }
+
     // Unqueued, pre-auction debt
     function Woe() public view returns (uint256) {
         return sub(sub(Awe(), Sin), Ash);
@@ -94,7 +97,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
     bytes32 constant ilk = "usdx";
 
-    uint256 constant USDX_BASE_UNIT = 10 ** 6;
+    uint256 constant USDX_BASE_UNIT = 10**6;
     uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_BASE_UNIT;
 
     event Rely(address indexed usr);
@@ -106,11 +109,11 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Quit(address indexed quiteAddress, uint256 wad);
 
     function ray(uint256 wad) internal pure returns (uint256) {
-        return wad * 10 ** 9;
+        return wad * 10**9;
     }
 
     function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10 ** 27;
+        return wad * 10**27;
     }
 
     function setUpMCDandPSM() internal {
@@ -149,7 +152,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         spot.poke(ilk);
 
         vat.file(ilk, "line", rad(1000 ether));
-        vat.file("Line",      rad(1000 ether));
+        vat.file("Line", rad(1000 ether));
     }
 
     function setUp() public {

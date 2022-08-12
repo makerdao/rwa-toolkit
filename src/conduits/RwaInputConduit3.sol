@@ -50,9 +50,9 @@ contract RwaInputConduit3 {
     mapping(address => uint256) public may;
 
     /// @notice PSM GEM token contract address
-    DSTokenAbstract immutable public gem;
+    DSTokenAbstract public immutable gem;
     /// @notice PSM contract address
-    PsmAbstract immutable public psm;
+    PsmAbstract public immutable psm;
     /// @notice Exit address
     address public quitAddress;
 
@@ -106,7 +106,11 @@ contract RwaInputConduit3 {
      * @param _to RwaUrn contract address.
      * @param _quitAddress Address to where outstanding GEM balance will go after `quit`
      */
-    constructor(address _psm, address _to, address _quitAddress) public {
+    constructor(
+        address _psm,
+        address _to,
+        address _quitAddress
+    ) public {
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());
@@ -181,7 +185,7 @@ contract RwaInputConduit3 {
         emit File(what, data);
     }
 
-     /*//////////////////////////////////
+    /*//////////////////////////////////
                Operations
     //////////////////////////////////*/
 
@@ -189,7 +193,7 @@ contract RwaInputConduit3 {
      * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
-     function push() external {
+    function push() external {
         require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
         uint256 balance = gem.balanceOf(address(this));
         require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
@@ -202,7 +206,7 @@ contract RwaInputConduit3 {
         emit Push(to, daiBalance);
     }
 
-     /**
+    /**
      * @notice Flushes out any GEM balance to `quitAddress` address.
      * @dev Can only be called by an admin.
      */

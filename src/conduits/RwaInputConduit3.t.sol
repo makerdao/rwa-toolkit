@@ -87,7 +87,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     DaiJoin daiJoin;
     Dai dai;
 
-    AuthGemJoin5 gemA;
+    AuthGemJoin5 joinA;
     DssPsm psmA;
     RwaInputConduit3 inputConduit;
     TestUrn testUrn;
@@ -128,17 +128,17 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vat.init(ilk);
 
-        gemA = new AuthGemJoin5(address(vat), ilk, address(usdx));
-        vat.rely(address(gemA));
+        joinA = new AuthGemJoin5(address(vat), ilk, address(usdx));
+        vat.rely(address(joinA));
 
         dai = new Dai(0);
         daiJoin = new DaiJoin(address(vat), address(dai));
         vat.rely(address(daiJoin));
         dai.rely(address(daiJoin));
 
-        psmA = new DssPsm(address(gemA), address(daiJoin), address(vow));
-        gemA.rely(address(psmA));
-        gemA.deny(me);
+        psmA = new DssPsm(address(joinA), address(daiJoin), address(vow));
+        joinA.rely(address(psmA));
+        joinA.deny(me);
 
         pip = new DSValue();
         pip.poke(bytes32(uint256(1 ether))); // Spot = $1
@@ -155,27 +155,21 @@ contract RwaInputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = new TestUrn();
-        inputConduit = new RwaInputConduit3(address(dai), address(usdx), address(psmA), address(testUrn));
+        inputConduit = new RwaInputConduit3(address(psmA), address(testUrn));
         inputConduit.mate(me);
-    }
-
-    function testRevertOnDeployConduitWithWrongGem() public {
-        vm.expectRevert("RwaInputConduit3/wrong-gem-for-psm");
-        new RwaInputConduit3(address(dai), address(0), address(psmA), address(testUrn));
-    }
-
-    function testRevertOnDeployConduitWithWrongDai() public {
-        vm.expectRevert("RwaInputConduit3/wrong-dai-for-psm");
-        new RwaInputConduit3(address(0), address(usdx), address(psmA), address(testUrn));
     }
 
     function testSetWardAndEmitRelyOnDeploy() public {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaInputConduit3 c = new RwaInputConduit3(address(dai), address(usdx), address(psmA), address(testUrn));
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
 
         assertEq(c.wards(address(this)), 1);
+    }
+
+    function testGiveUnlimitedApprovalToPsmGemJoinOnDeploy() public {
+        assertEq(usdx.allowance(address(inputConduit), address(joinA)), 2**256 - 1);
     }
 
     function testCanRelyDeny() public {
@@ -231,32 +225,24 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaInputConduit3/not-mate");
         inputConduit.push();
-
-        vm.expectRevert("RwaInputConduit3/not-mate");
-        inputConduit.push(100);
     }
 
-    function testRevertPushWIthZeroAmount() public {
-        vm.expectRevert("RwaInputConduit3/not-positive-amount");
-        inputConduit.push(0);
+    function testRevertOnNotMateMethods() public {
+        vm.startPrank(address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-mate");
+        inputConduit.push();
     }
 
     function testRevertPushIfInsufficientBalance() public {
         vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
         inputConduit.push();
-        
-        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
-        inputConduit.push(100);
-        
-        usdx.transfer(address(inputConduit), 50 * USDX_WAD);
-        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
-        inputConduit.push(51 * USDX_WAD);
     }
 
     function testPush() public {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(usdx.balanceOf(address(gemA)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
 
         usdx.transfer(address(inputConduit), 500 * USDX_WAD);
 
@@ -269,36 +255,15 @@ contract RwaInputConduit3Test is Test, DSMath {
         emit Push(address(testUrn), 500 ether);
         inputConduit.push();
 
-        assertEq(usdx.balanceOf(address(gemA)), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_WAD);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(testUrn.balance(address(dai)), 500 ether);
-    }
-
-    function testPushAmount() public {
-        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
-        assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(usdx.balanceOf(address(gemA)), 0);
-
-        usdx.transfer(address(inputConduit), 500 * USDX_WAD);
-
-        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_WAD);
-        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
-
-        assertEq(testUrn.balance(address(dai)), 0);
-
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(testUrn), 400 ether);
-        inputConduit.push(400 * USDX_WAD);
-
-        assertEq(usdx.balanceOf(address(gemA)), 400 * USDX_WAD);
-        assertEq(usdx.balanceOf(address(inputConduit)), 100 * USDX_WAD);
-        assertEq(testUrn.balance(address(dai)), 400 ether);
     }
 
     function testRevertOnSwapAboveLine() public {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(usdx.balanceOf(address(gemA)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
 
         usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
 

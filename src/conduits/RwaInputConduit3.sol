@@ -31,7 +31,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - Require PSM and corresponding GEM addresses in constructor
+ *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
  */
 contract RwaInputConduit3 {
@@ -47,9 +47,9 @@ contract RwaInputConduit3 {
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice GEM token contract address (should ERC20 compliant)
+    /// @notice PSM GEM token contract address
     DSTokenAbstract public gem;
-    /// @notice PSM contract address for the GEM
+    /// @notice PSM contract address
     PsmAbstract public psm;
 
     /**
@@ -81,17 +81,17 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Define addresses and gives `msg.sender` admin access.
-     * @param _dai Dai token contract address.
+     * @param _psm PSM contract address.
      * @param _to RwaUrn contract address.
      */
-    constructor(address _dai, address _gem, address _psm, address _to) public {
-        dai = DSTokenAbstract(_dai);
-        gem = DSTokenAbstract(_gem);
+    constructor(address _psm, address _to) public {
         psm = PsmAbstract(_psm);
+        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
+        gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         to = _to;
 
-        require(GemJoinAbstract(psm.gemJoin()).gem() == _gem, "RwaInputConduit3/wrong-gem-for-psm");
-        require(address(psm.dai()) == _dai, "RwaInputConduit3/wrong-dai-for-psm");
+        // Give unlimited approve to PSM gemjoin
+        gem.approve(address(psm.gemJoin()), 2**256 - 1);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -143,30 +143,15 @@ contract RwaInputConduit3 {
      *  - Approve PSM gemJoin Adapter with WAD amount of GEM
      *  - Swap GEM to DAI through PSM
      *  - Push DAI to Recipient address (to)
-     * @param wad Amount to swap and push
+     * @param gemAmount GEM Amount to swap
      */
-    function _swapAndPush(uint256 wad) internal {
-        gem.approve(address(psm.gemJoin()), wad);
-        psm.sellGem(address(this), wad);
+    function _swapAndPush(uint256 gemAmount) internal {
+        psm.sellGem(address(this), gemAmount);
 
         uint256 balance = dai.balanceOf(address(this));
         dai.transfer(to, balance);
 
         emit Push(to, balance);
-    }
-
-    /**
-     * @notice Method to swap WAD amount of USDC contract balance to DAI through PSM and push it to Recipient address (to).
-     * @dev `msg.sender` must first receive push acess through mate().
-     * @param wad Amount to swap and push
-     */
-     function push(uint256 wad) public {
-        require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
-        require(wad > 0, "RwaInputConduit3/not-positive-amount");
-        uint256 balance = gem.balanceOf(address(this));
-        require(balance >= wad, "RwaInputConduit3/insufficient-gem-balance");
-
-        _swapAndPush(wad);
     }
 
     /**

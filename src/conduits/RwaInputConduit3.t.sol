@@ -95,8 +95,8 @@ contract RwaInputConduit3Test is Test, DSMath {
     bytes32 constant ilk = "usdx";
 
     uint256 constant TOLL_ONE_PCT = 10 ** 16;
-    uint256 constant USDX_WAD = 10 ** 6;
-    uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_WAD;
+    uint256 constant USDX_BASE_UNIT = 10 ** 6;
+    uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_BASE_UNIT;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -266,10 +266,10 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(usdx.balanceOf(address(joinA)), 0);
 
-        usdx.transfer(address(inputConduit), 500 * USDX_WAD);
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
 
-        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_WAD);
-        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
 
         assertEq(testUrn.balance(address(dai)), 0);
 
@@ -277,7 +277,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         emit Push(address(testUrn), 500 ether);
         inputConduit.push();
 
-        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_WAD);
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(testUrn.balance(address(dai)), 500 ether);
     }

@@ -104,6 +104,7 @@ contract RwaInputConduit3 {
      * @notice Define addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
      * @param _to RwaUrn contract address.
+     * @param _quitAddress Address to where outstanding GEM balance will go after `quit`
      */
     constructor(address _psm, address _to, address _quitAddress) public {
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
@@ -181,7 +182,7 @@ contract RwaInputConduit3 {
     }
 
      /*//////////////////////////////////
-               Operation
+               Operations
     //////////////////////////////////*/
 
     /**

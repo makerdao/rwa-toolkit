@@ -34,9 +34,14 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
  *  - The `quit` method allows moving outstanding GEM balance to `quitAddress`. It can be called only by the admin.
- *  - The `file` method allows updating `quiteAddress`. It can be called only by the admin.
+ *  - The `file` method allows updating `quitAddress`. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
+    /// @notice PSM GEM token contract address
+    DSTokenAbstract public immutable gem;
+    /// @notice PSM contract address
+    PsmAbstract public immutable psm;
+
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
     DSTokenAbstract private __unused_gov;
     /// @notice Dai token contract address
@@ -49,10 +54,6 @@ contract RwaInputConduit3 {
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice PSM GEM token contract address
-    DSTokenAbstract public immutable gem;
-    /// @notice PSM contract address
-    PsmAbstract public immutable psm;
     /// @notice Exit address
     address public quitAddress;
 
@@ -90,7 +91,7 @@ contract RwaInputConduit3 {
     event File(bytes32 indexed what, address data);
     /**
      * @notice The conduit outstanding gem balance was flushed out to `exitAddress`.
-     * @param quitAddress The quiteAddress address.
+     * @param quitAddress The quitAddress address.
      * @param wad The amount flushed out.
      */
     event Quit(address indexed quitAddress, uint256 wad);

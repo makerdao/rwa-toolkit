@@ -106,7 +106,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Hate(address indexed usr);
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
-    event Quit(address indexed quiteAddress, uint256 wad);
+    event Quit(address indexed quitAddress, uint256 wad);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10**9;

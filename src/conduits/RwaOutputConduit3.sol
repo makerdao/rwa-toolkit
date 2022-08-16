@@ -129,7 +129,7 @@ contract RwaOutputConduit3 {
         require(gemDecimals <= 18, "RwaOutputConduit3/invalid-gem-decimals");
         toGemConversionFactor = 10**(dai.decimals() - gemDecimals);
 
-        // Give unlimited approve to PSM gemjoin
+        // Give unlimited approve to PSM
         dai.approve(_psm, type(uint256).max);
 
         wards[msg.sender] = 1;

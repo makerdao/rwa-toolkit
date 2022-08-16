@@ -33,8 +33,8 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
- *  - The `quit` method allows moving outstanding GEM balance to `quitAddress`. It can be called only by the admin.
- *  - The `file` method allows updating `quitAddress`. It can be called only by the admin.
+ *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
+ *  - The `file` method allows updating `quitTo`. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
     /// @notice PSM GEM token contract address
@@ -55,7 +55,7 @@ contract RwaInputConduit3 {
     mapping(address => uint256) public may;
 
     /// @notice Exit address
-    address public quitAddress;
+    address public quitTo;
 
     /**
      * @notice `usr` was granted admin access.
@@ -85,16 +85,16 @@ contract RwaInputConduit3 {
     event Push(address indexed to, uint256 wad);
     /**
      * @notice A contract parameter was updated.
-     * @param what The changed parameter name. Currently the supported values are: "quitAddress".
+     * @param what The changed parameter name. Currently the supported values are: "quitTo".
      * @param data The new value of the parameter.
      */
     event File(bytes32 indexed what, address data);
     /**
      * @notice The conduit outstanding gem balance was flushed out to `exitAddress`.
-     * @param quitAddress The quitAddress address.
+     * @param quitTo The quitTo address.
      * @param wad The amount flushed out.
      */
-    event Quit(address indexed quitAddress, uint256 wad);
+    event Quit(address indexed quitTo, uint256 wad);
 
     modifier auth() {
         require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
@@ -105,19 +105,19 @@ contract RwaInputConduit3 {
      * @notice Define addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
      * @param _to RwaUrn contract address.
-     * @param _quitAddress Address to where outstanding GEM balance will go after `quit`
+     * @param _quitTo Address to where outstanding GEM balance will go after `quit`
      */
     constructor(
         address _psm,
         address _to,
-        address _quitAddress
+        address _quitTo
     ) public {
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         to = _to;
-        quitAddress = _quitAddress;
+        quitTo = _quitTo;
 
         // Give unlimited approve to PSM gemjoin
         _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
@@ -172,13 +172,13 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"quitAddress"`
+     * @param what The changed parameter name. `"quitTo"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
-        if (what == "quitAddress") {
-            require(data != address(0), "RwaInputConduit3/invalid-quit-address");
-            quitAddress = data;
+        if (what == "quitTo") {
+            require(data != address(0), "RwaInputConduit3/invalid-quit-to-address");
+            quitTo = data;
         } else {
             revert("RwaInputConduit3/unrecognised-param");
         }
@@ -208,13 +208,13 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out any GEM balance to `quitAddress` address.
+     * @notice Flushes out any GEM balance to `quitTo` address.
      * @dev Can only be called by an admin.
      */
     function quit() external auth {
         uint256 wad = gem.balanceOf(address(this));
 
-        gem.transfer(quitAddress, wad);
-        emit Quit(quitAddress, wad);
+        gem.transfer(quitTo, wad);
+        emit Quit(quitTo, wad);
     }
 }

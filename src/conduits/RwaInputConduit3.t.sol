@@ -106,7 +106,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Hate(address indexed usr);
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
-    event Quit(address indexed quitAddress, uint256 wad);
+    event Quit(address indexed quitTo, uint256 wad);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10**9;
@@ -173,7 +173,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     }
 
     function testGiveUnlimitedApprovalToPsmGemJoinOnDeploy() public {
-        assertEq(usdx.allowance(address(inputConduit), address(joinA)), 2**256 - 1);
+        assertEq(usdx.allowance(address(inputConduit), address(joinA)), type(uint256).max);
     }
 
     function testRelyDeny() public {
@@ -213,20 +213,25 @@ contract RwaInputConduit3Test is Test, DSMath {
     }
 
     function testFile() public {
-        assertEq(inputConduit.quitAddress(), address(this));
+        assertEq(inputConduit.quitTo(), address(this));
 
-        address quitAddress = vm.addr(1);
+        address quitToAddress = vm.addr(1);
         vm.expectEmit(true, true, false, false);
-        emit File(bytes32("quitAddress"), quitAddress);
+        emit File(bytes32("quitTo"), quitToAddress);
 
-        inputConduit.file(bytes32("quitAddress"), quitAddress);
+        inputConduit.file(bytes32("quitTo"), quitToAddress);
 
-        assertEq(inputConduit.quitAddress(), quitAddress);
+        assertEq(inputConduit.quitTo(), quitToAddress);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
         vm.expectRevert("RwaInputConduit3/unrecognised-param");
         inputConduit.file(bytes32("to"), address(0));
+    }
+
+    function testRevertOnFileQuitToZeroAddress() public {
+        vm.expectRevert("RwaInputConduit3/invalid-quit-to-address");
+        inputConduit.file(bytes32("quitTo"), address(0));
     }
 
     function testRevertOnUnauthorizedMethods() public {
@@ -245,7 +250,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.mate(address(0));
 
         vm.expectRevert("RwaInputConduit3/not-authorized");
-        inputConduit.file(bytes32("quitAddress"), address(0));
+        inputConduit.file(bytes32("quitTo"), address(0));
 
         vm.expectRevert("RwaInputConduit3/not-authorized");
         inputConduit.quit();
@@ -306,12 +311,12 @@ contract RwaInputConduit3Test is Test, DSMath {
     function testQuit() public {
         usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
 
-        assertEq(inputConduit.quitAddress(), me);
+        assertEq(inputConduit.quitTo(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
 
         inputConduit.quit();
 
-        assertEq(usdx.balanceOf(inputConduit.quitAddress()), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(inputConduit.quitTo()), USDX_MINT_AMOUNT);
     }
 }

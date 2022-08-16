@@ -31,12 +31,18 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - Require PSM address in constructor
+ *  - The `push()` method swaps DAI to GEM using PSM
+ *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by the admin.
+ *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
     /// @notice PSM GEM token contract address
     DSTokenAbstract public immutable gem;
     /// @notice PSM contract address
     PsmAbstract public immutable psm;
+    /// @dev DAI/GEM decimal difference
+    uint256 private immutable toGemConversionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
@@ -108,8 +114,9 @@ contract RwaOutputConduit3 {
     event Quit(address indexed quitTo, uint256 wad);
 
     /**
-     * @notice Defines Dai address and gives `msg.sender` admin access.
-     * @param _dai Dai address.
+     * @notice Defines PSM and quitTo addresses and gives `msg.sender` admin access.
+     * @param _psm PSM contract address.
+     * @param _quitTo Address to where outstanding GEM balance will go after `quit`
      */
     constructor(address _psm, address _quitTo) public {
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
@@ -117,9 +124,10 @@ contract RwaOutputConduit3 {
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         quitTo = _quitTo;
+        toGemConversionFactor = 10**(dai.decimals() - _gem.decimals());
 
         // Give unlimited approve to PSM gemjoin
-        dai.approve(address(PsmAbstract(_psm).daiJoin()), type(uint256).max);
+        dai.approve(_psm, type(uint256).max);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -228,12 +236,14 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         uint256 balance = dai.balanceOf(address(this));
-        require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
+        require(balance > 0, "RwaOutputConduit3/insufficient-dai-balance");
+        uint256 gemAmount = balance / toGemConversionFactor;
+        require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
-        psm.buyGem(address(this), balance);
+        psm.buyGem(address(this), gemAmount);
 
-        uint256 gemBalance = dai.balanceOf(address(this));
-        gem.transfer(to, daiBalance);
+        uint256 gemBalance = gem.balanceOf(address(this));
+        gem.transfer(to, gemBalance);
 
         emit Push(to, gemBalance);
     }

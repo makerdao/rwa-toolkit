@@ -204,7 +204,6 @@ contract RwaInputConduit3 {
      */
     function push() external isMate {
         uint256 balance = gem.balanceOf(address(this));
-        require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
 
         psm.sellGem(address(this), balance);
 

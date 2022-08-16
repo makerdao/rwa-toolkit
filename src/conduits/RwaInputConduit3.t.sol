@@ -276,11 +276,6 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.quit();
     }
 
-    function testRevertPushIfInsufficientBalance() public {
-        vm.expectRevert("RwaInputConduit3/insufficient-gem-balance");
-        inputConduit.push();
-    }
-
     function testPush() public {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);

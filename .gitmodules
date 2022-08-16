@@ -34,3 +34,6 @@
 [submodule "lib/dss-psm"]
 	path = lib/dss-psm
 	url = https://github.com/makerdao/dss-psm
+[submodule "lib/ilk-registry"]
+	path = lib/ilk-registry
+	url = https://github.com/makerdao/ilk-registry

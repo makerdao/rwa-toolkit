@@ -222,6 +222,14 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.file(bytes32("quitTo"), quitToAddress);
 
         assertEq(inputConduit.quitTo(), quitToAddress);
+
+        address to = vm.addr(2);
+        vm.expectEmit(true, true, false, false);
+        emit File(bytes32("to"), to);
+
+        inputConduit.file(bytes32("to"), to);
+
+        assertEq(inputConduit.to(), to);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
@@ -232,6 +240,11 @@ contract RwaInputConduit3Test is Test, DSMath {
     function testRevertOnFileQuitToZeroAddress() public {
         vm.expectRevert("RwaInputConduit3/invalid-quit-to-address");
         inputConduit.file(bytes32("quitTo"), address(0));
+    }
+
+    function testRevertOnFileToAddressZeroAddress() public {
+        vm.expectRevert("RwaInputConduit3/invalid-to-address");
+        inputConduit.file(bytes32("to"), address(0));
     }
 
     function testRevertOnUnauthorizedMethods() public {

@@ -34,7 +34,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
  *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
- *  - The `file` method allows updating `quitTo`. It can be called only by the admin.
+ *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
     /// @notice PSM GEM token contract address
@@ -85,7 +85,7 @@ contract RwaInputConduit3 {
     event Push(address indexed to, uint256 wad);
     /**
      * @notice A contract parameter was updated.
-     * @param what The changed parameter name. Currently the supported values are: "quitTo".
+     * @param what The changed parameter name. Currently the supported values are: "quitTo", "to".
      * @param data The new value of the parameter.
      */
     event File(bytes32 indexed what, address data);
@@ -177,13 +177,16 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"quitTo"`
+     * @param what The changed parameter name. `"quitTo", "to"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
         if (what == "quitTo") {
             require(data != address(0), "RwaInputConduit3/invalid-quit-to-address");
             quitTo = data;
+        } else if (what == "to") {
+            require(data != address(0), "RwaInputConduit3/invalid-to-address");
+            to = data;
         } else {
             revert("RwaInputConduit3/unrecognised-param");
         }

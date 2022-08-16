@@ -101,6 +101,11 @@ contract RwaInputConduit3 {
         _;
     }
 
+    modifier isMate() {
+        require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
+        _;
+    }
+
     /**
      * @notice Define addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
@@ -194,8 +199,7 @@ contract RwaInputConduit3 {
      * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
-    function push() external {
-        require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
+    function push() external isMate {
         uint256 balance = gem.balanceOf(address(this));
         require(balance > 0, "RwaInputConduit3/insufficient-gem-balance");
 
@@ -209,9 +213,9 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Flushes out any GEM balance to `quitTo` address.
-     * @dev Can only be called by an admin.
+     * @dev `msg.sender` must first receive push acess through mate().
      */
-    function quit() external auth {
+    function quit() external isMate {
         uint256 wad = gem.balanceOf(address(this));
 
         gem.transfer(quitTo, wad);

@@ -226,7 +226,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
     function testRevertOnFileUnrecognisedParam() public {
         vm.expectRevert("RwaInputConduit3/unrecognised-param");
-        inputConduit.file(bytes32("to"), address(0));
+        inputConduit.file(bytes32("random"), address(0));
     }
 
     function testRevertOnFileQuitToZeroAddress() public {
@@ -251,9 +251,6 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaInputConduit3/not-authorized");
         inputConduit.file(bytes32("quitTo"), address(0));
-
-        vm.expectRevert("RwaInputConduit3/not-authorized");
-        inputConduit.quit();
     }
 
     function testRevertOnNotMateMethods() public {
@@ -261,6 +258,9 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaInputConduit3/not-mate");
         inputConduit.push();
+
+        vm.expectRevert("RwaInputConduit3/not-mate");
+        inputConduit.quit();
     }
 
     function testRevertPushIfInsufficientBalance() public {

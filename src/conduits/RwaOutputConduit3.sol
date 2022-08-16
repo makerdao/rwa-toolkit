@@ -124,7 +124,10 @@ contract RwaOutputConduit3 {
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         quitTo = _quitTo;
-        toGemConversionFactor = 10**(dai.decimals() - _gem.decimals());
+
+        uint256 gemDecimals = _gem.decimals();
+        require(gemDecimals <= 18, "RwaOutputConduit3/invalid-gem-decimals");
+        toGemConversionFactor = 10**(dai.decimals() - gemDecimals);
 
         // Give unlimited approve to PSM gemjoin
         dai.approve(_psm, type(uint256).max);

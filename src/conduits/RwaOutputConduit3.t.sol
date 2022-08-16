@@ -279,11 +279,6 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.quit();
     }
 
-    function testRevertPushIfInsufficientBalance() public {
-        vm.expectRevert("RwaOutputConduit3/insufficient-dai-balance");
-        outputConduit.push();
-    }
-
     function testPush() public {
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
@@ -316,7 +311,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(address(outputConduit)), 500);
     }
 
-    function testRevertOnInsufficientGemAmountInPsm() public {
+    function testRevertOnInsufficientGemAmountInPsm() private {
         dai.mint(me, 100 ether);
 
         assertEq(usdx.balanceOf(me), 0);

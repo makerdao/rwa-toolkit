@@ -36,6 +36,7 @@ import {RwaOutputConduit3} from "./RwaOutputConduit3.sol";
 
 import {DssPsm} from "dss-psm/psm.sol";
 import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
+import {AuthGemJoin} from "dss-psm/join-auth.sol";
 
 contract TestToken is DSToken {
     constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
@@ -177,6 +178,15 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
     function testGiveUnlimitedApprovalToPsmDaiJoinOnDeploy() public {
         assertEq(dai.allowance(address(outputConduit), address(psmA)), type(uint256).max);
+    }
+
+    function testRevertOnGemUnssuportedDecimals() public {
+        TestToken testGem = new TestToken("USDX", 19);
+        AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
+        DssPsm psm = new DssPsm(address(testJoin), address(daiJoin), address(vow));
+
+        vm.expectRevert("RwaOutputConduit3/invalid-gem-decimals");
+        new RwaOutputConduit3(address(psm), address(testUrn));
     }
 
     function testRelyDeny() public {

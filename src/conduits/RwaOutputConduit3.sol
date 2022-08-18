@@ -239,7 +239,6 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         uint256 balance = dai.balanceOf(address(this));
-        require(balance > 0, "RwaOutputConduit3/insufficient-dai-balance");
         uint256 gemAmount = balance / toGemConversionFactor;
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 

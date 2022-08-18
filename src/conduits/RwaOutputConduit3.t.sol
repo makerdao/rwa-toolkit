@@ -321,7 +321,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(address(outputConduit)), 500);
     }
 
-    function testRevertOnInsufficientGemAmountInPsm() private {
+    function testRevertOnInsufficientGemAmountInPsm() public {
         dai.mint(me, 100 ether);
 
         assertEq(usdx.balanceOf(me), 0);
@@ -334,6 +334,9 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         vat.mint(address(daiJoin), 1100 ether * 10**27);
 
+        vm.expectRevert();
+        // It will revert on vat.frob()
+        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink = 1000 and dink = 1100
         outputConduit.push();
 
         assertEq(dai.balanceOf(address(outputConduit)), 1100 ether);
@@ -350,5 +353,17 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.quit();
 
         assertEq(dai.balanceOf(outputConduit.quitTo()), 1000 ether);
+    }
+
+    struct Ilk {
+        uint256 Art; // Total Normalised Debt     [wad]
+        uint256 rate; // Accumulated Rates         [ray]
+        uint256 spot; // Price with Safety Margin  [ray]
+        uint256 line; // Debt Ceiling              [rad]
+        uint256 dust; // Urn Debt Floor            [rad]
+    }
+    struct Urn {
+        uint256 ink; // Locked Collateral  [wad]
+        uint256 art; // Normalised Debt    [wad]
     }
 }

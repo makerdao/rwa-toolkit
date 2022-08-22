@@ -38,47 +38,6 @@ import {DssPsm} from "dss-psm/psm.sol";
 import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 import {AuthGemJoin} from "dss-psm/join-auth.sol";
 
-contract TestToken is DSToken {
-    constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
-        decimals = decimals_;
-    }
-}
-
-contract TestVat is Vat {
-    function mint(address usr, uint256 rad) public {
-        dai[usr] += rad;
-    }
-}
-
-contract TestVow is Vow {
-    constructor(
-        address vat,
-        address flapper,
-        address flopper
-    ) public Vow(vat, flapper, flopper) {}
-
-    // Total deficit
-    function Awe() public view returns (uint256) {
-        return vat.sin(address(this));
-    }
-
-    // Total surplus
-    function Joy() public view returns (uint256) {
-        return vat.dai(address(this));
-    }
-
-    // Unqueued, pre-auction debt
-    function Woe() public view returns (uint256) {
-        return sub(sub(Awe(), Sin), Ash);
-    }
-}
-
-contract TestUrn {
-    function balance(address gem) public view returns (uint256) {
-        return DSToken(gem).balanceOf(address(this));
-    }
-}
-
 contract RwaOutputConduit3Test is Test, DSMath {
     address me;
 
@@ -354,16 +313,45 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(dai.balanceOf(outputConduit.quitTo()), 1000 ether);
     }
+}
 
-    struct Ilk {
-        uint256 Art; // Total Normalised Debt     [wad]
-        uint256 rate; // Accumulated Rates         [ray]
-        uint256 spot; // Price with Safety Margin  [ray]
-        uint256 line; // Debt Ceiling              [rad]
-        uint256 dust; // Urn Debt Floor            [rad]
+contract TestToken is DSToken {
+    constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
+        decimals = decimals_;
     }
-    struct Urn {
-        uint256 ink; // Locked Collateral  [wad]
-        uint256 art; // Normalised Debt    [wad]
+}
+
+contract TestVat is Vat {
+    function mint(address usr, uint256 rad) public {
+        dai[usr] += rad;
+    }
+}
+
+contract TestVow is Vow {
+    constructor(
+        address vat,
+        address flapper,
+        address flopper
+    ) public Vow(vat, flapper, flopper) {}
+
+    // Total deficit
+    function Awe() public view returns (uint256) {
+        return vat.sin(address(this));
+    }
+
+    // Total surplus
+    function Joy() public view returns (uint256) {
+        return vat.dai(address(this));
+    }
+
+    // Unqueued, pre-auction debt
+    function Woe() public view returns (uint256) {
+        return sub(sub(Awe(), Sin), Ash);
+    }
+}
+
+contract TestUrn {
+    function balance(address gem) public view returns (uint256) {
+        return DSToken(gem).balanceOf(address(this));
     }
 }

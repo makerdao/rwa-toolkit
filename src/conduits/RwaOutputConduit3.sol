@@ -23,8 +23,6 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
- * @author Kaue Cano <kaue@clio.finance>
- * @author Henrique Barcelos <henrique@clio.finance>
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Output Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaOutputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L41-L118):
@@ -121,13 +119,14 @@ contract RwaOutputConduit3 {
     constructor(address _psm, address _quitTo) public {
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
-        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
+        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
         quitTo = _quitTo;
 
         uint256 gemDecimals = _gem.decimals();
-        require(gemDecimals <= 18, "RwaOutputConduit3/invalid-gem-decimals");
-        toGemConversionFactor = 10**(dai.decimals() - gemDecimals);
+        uint256 daiDecimals = dai.decimals();
+        require(gemDecimals <= daiDecimals, "RwaOutputConduit3/invalid-gem-decimals");
+        toGemConversionFactor = 10**(daiDecimals - gemDecimals);
 
         // Give unlimited approve to PSM
         dai.approve(_psm, type(uint256).max);

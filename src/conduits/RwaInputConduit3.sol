@@ -23,8 +23,6 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
 /**
  * @author Lev Livnev <lev@liv.nev.org.uk>
- * @author Kaue Cano <kaue@clio.finance>
- * @author Henrique Barcelos <henrique@clio.finance>
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):

@@ -33,7 +33,7 @@ jobs:
       - name: Run Forge Build
         run: |
           forge --version
-          forge build --sizes
+          forge build
         id: build
 
       # Standalone mode

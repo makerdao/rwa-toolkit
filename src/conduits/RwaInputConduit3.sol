@@ -203,7 +203,7 @@ contract RwaInputConduit3 {
     function push() external isMate {
         uint256 balance = gem.balanceOf(address(this));
 
-        psm.sellGem(address(this), balance); // can fail because of autoline
+        psm.sellGem(address(this), balance);
 
         uint256 daiBalance = dai.balanceOf(address(this));
         dai.transfer(to, daiBalance);

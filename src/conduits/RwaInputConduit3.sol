@@ -203,7 +203,23 @@ contract RwaInputConduit3 {
     function push() external isMate {
         uint256 balance = gem.balanceOf(address(this));
 
-        psm.sellGem(address(this), balance);
+        psm.sellGem(address(this), balance); // can fail because of autoline
+
+        uint256 daiBalance = dai.balanceOf(address(this));
+        dai.transfer(to, daiBalance);
+
+        emit Push(to, daiBalance);
+    }
+
+    /**
+     * @notice Method to swap specific amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     */
+    function push(uint256 amt) external isMate {
+        uint256 gemBalance = gem.balanceOf(address(this));
+        require(gemBalance >= amt, "RwaInputConduit3/not-enough-gems");
+
+        psm.sellGem(address(this), amt);
 
         uint256 daiBalance = dai.balanceOf(address(this));
         dai.transfer(to, daiBalance);
@@ -216,9 +232,21 @@ contract RwaInputConduit3 {
      * @dev `msg.sender` must first receive push acess through mate().
      */
     function quit() external isMate {
-        uint256 wad = gem.balanceOf(address(this));
+        uint256 gemBalance = gem.balanceOf(address(this));
 
-        gem.transfer(quitTo, wad);
-        emit Quit(quitTo, wad);
+        gem.transfer(quitTo, gemBalance);
+        emit Quit(quitTo, gemBalance);
+    }
+
+    /**
+     * @notice Flushes out specific amount of GEM balance to `quitTo` address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     */
+    function quit(uint256 amt) external isMate {
+        uint256 gemBalance = gem.balanceOf(address(this));
+        require(gemBalance >= amt, "RwaInputConduit3/not-enough-gems");
+
+        gem.transfer(quitTo, amt);
+        emit Quit(quitTo, amt);
     }
 }

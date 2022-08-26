@@ -63,6 +63,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
     event Deny(address indexed usr);
     event Mate(address indexed usr);
     event Hate(address indexed usr);
+    event Kiss(address indexed who);
+    event Diss(address indexed who);
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
@@ -120,7 +122,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         testUrn = new TestUrn();
         outputConduit = new RwaOutputConduit3(address(psmA), address(testUrn));
         outputConduit.mate(me);
-        outputConduit.file(bytes32("to"), me);
+        outputConduit.kiss(me);
+        outputConduit.pick(me);
 
         usdx.approve(address(joinA));
         psmA.sellGem(me, USDX_MINT_AMOUNT);
@@ -184,6 +187,24 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.may(address(0)), 0);
     }
 
+    function testKissDiss() public {
+        assertEq(outputConduit.bud(address(0)), 0);
+
+        vm.expectEmit(true, false, false, false);
+        emit Kiss(address(0));
+
+        outputConduit.kiss(address(0));
+
+        assertEq(outputConduit.bud(address(0)), 1);
+
+        vm.expectEmit(true, false, false, false);
+        emit Diss(address(0));
+
+        outputConduit.diss(address(0));
+
+        assertEq(outputConduit.bud(address(0)), 0);
+    }
+
     function testFile() public {
         assertEq(outputConduit.quitTo(), address(testUrn));
 
@@ -194,14 +215,6 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("quitTo"), quitToAddress);
 
         assertEq(outputConduit.quitTo(), quitToAddress);
-
-        address to = vm.addr(2);
-        vm.expectEmit(true, true, false, false);
-        emit File(bytes32("to"), to);
-
-        outputConduit.file(bytes32("to"), to);
-
-        assertEq(outputConduit.to(), to);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
@@ -212,11 +225,6 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testRevertOnFileQuitToZeroAddress() public {
         vm.expectRevert("RwaOutputConduit3/invalid-quit-to-address");
         outputConduit.file(bytes32("quitTo"), address(0));
-    }
-
-    function testRevertOnFileToAddressZeroAddress() public {
-        vm.expectRevert("RwaOutputConduit3/invalid-to-address");
-        outputConduit.file(bytes32("to"), address(0));
     }
 
     function testRevertOnUnauthorizedMethods() public {
@@ -235,6 +243,12 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.mate(address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
+        outputConduit.kiss(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        outputConduit.diss(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-authorized");
         outputConduit.file(bytes32("quitTo"), address(0));
     }
 
@@ -242,10 +256,18 @@ contract RwaOutputConduit3Test is Test, DSMath {
         vm.startPrank(address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-mate");
+        outputConduit.pick(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-mate");
         outputConduit.push();
 
         vm.expectRevert("RwaOutputConduit3/not-mate");
         outputConduit.quit();
+    }
+
+    function testRevertOnPickAddressNotWHitelisted() public {
+        vm.expectRevert("RwaOutputConduit3/not-bud");
+        outputConduit.pick(vm.addr(1));
     }
 
     function testPush() public {
@@ -264,6 +286,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(outputConduit.to(), address(0));
     }
 
     function testPushAmountFuzz(uint256 wad) public {
@@ -281,6 +304,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), usdxBalance + wad / 10**12);
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertEq(dai.balanceOf(address(outputConduit)), cDaiBalance - (wad / 10**12) * 10**12);
+        assertEq(outputConduit.to(), address(0));
     }
 
     function testRevertOnPushAmountMoreThenBalance() public {

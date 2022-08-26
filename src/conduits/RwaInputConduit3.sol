@@ -214,6 +214,7 @@ contract RwaInputConduit3 {
     /**
      * @notice Method to swap specific amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
+     * @param amt Gem amount
      */
     function push(uint256 amt) external isMate {
         uint256 gemBalance = gem.balanceOf(address(this));
@@ -241,6 +242,7 @@ contract RwaInputConduit3 {
     /**
      * @notice Flushes out specific amount of GEM balance to `quitTo` address.
      * @dev `msg.sender` must first receive push acess through mate().
+     * @param amt Gem amount
      */
     function quit(uint256 amt) external isMate {
         uint256 gemBalance = gem.balanceOf(address(this));

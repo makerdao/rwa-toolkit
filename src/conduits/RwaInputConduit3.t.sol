@@ -266,7 +266,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         uint256 usdxCBalanceBefore = usdx.balanceOf(address(inputConduit));
         uint256 urnDaiBalanceBefore = usdx.balanceOf(address(testUrn));
 
-        vm.assume(amt <= usdxCBalanceBefore);
+        amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalanceBefore);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(testUrn), amt * USDX_DAI_DIF_DECIMALS);
@@ -321,14 +321,13 @@ contract RwaInputConduit3Test is Test, DSMath {
     }
 
     function testQuitAmountFuzz(uint256 amt) public {
+        assertEq(inputConduit.quitTo(), me);
         uint256 usdxBalance = usdx.balanceOf(me);
         usdx.transfer(address(inputConduit), usdxBalance);
         uint256 usdxCBalance = usdx.balanceOf(address(inputConduit));
         assertEq(usdx.balanceOf(me), 0);
 
-        vm.assume(amt <= usdxCBalance);
-
-        assertEq(inputConduit.quitTo(), me);
+        amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalance);
 
         vm.expectEmit(true, true, false, false);
         emit Quit(inputConduit.quitTo(), amt);

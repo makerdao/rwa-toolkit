@@ -250,11 +250,47 @@ contract RwaOutputConduit3 {
     }
 
     /**
+     * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
+     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
+     * @param wad Dai amount
+     */
+    function push(uint256 wad) external isMate {
+        require(to != address(0), "RwaOutputConduit3/to-not-picked");
+
+        uint256 balance = dai.balanceOf(address(this));
+        require(balance >= wad, "RwaOutputConduit3/not-enough-dai");
+
+        // We can lose some dust there. For exm: USDC has 6 dec and DAI has 18
+        uint256 gemAmount = wad / toGemConversionFactor;
+        require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
+
+        psm.buyGem(address(this), gemAmount);
+
+        uint256 gemBalance = gem.balanceOf(address(this));
+        gem.transfer(to, gemBalance);
+
+        emit Push(to, gemBalance);
+    }
+
+    /**
      * @notice Flushes out any DAI balance to `quitTo` address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
     function quit() external isMate {
         uint256 wad = dai.balanceOf(address(this));
+
+        dai.transfer(quitTo, wad);
+        emit Quit(quitTo, wad);
+    }
+
+    /**
+     * @notice Flushes out specific amount of DAI balance to `quitTo` address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     * @param wad Dai amount
+     */
+    function quit(uint256 wad) external isMate {
+        uint256 balance = dai.balanceOf(address(this));
+        require(balance >= wad, "RwaOutputConduit3/not-enough-dai");
 
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);

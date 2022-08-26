@@ -249,6 +249,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testPush() public {
+        assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
         assertEq(dai.balanceOf(address(me)), 1000 ether);
@@ -263,6 +264,30 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+    }
+
+    function testPushAmountFuzz(uint256 wad) public {
+        assertEq(outputConduit.to(), me);
+        dai.transfer(address(outputConduit), dai.balanceOf(me));
+        uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
+        uint256 usdxBalance = usdx.balanceOf(me);
+
+        wad = bound(wad, 10**18, cDaiBalance);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(me), wad / 10**12);
+        outputConduit.push(wad);
+
+        assertEq(usdx.balanceOf(me), usdxBalance + wad / 10**12);
+        // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
+        assertEq(dai.balanceOf(address(outputConduit)), cDaiBalance - (wad / 10**12) * 10**12);
+    }
+
+    function testRevertOnPushAmountMoreThenBalance() public {
+        assertEq(dai.balanceOf(address(outputConduit)), 0);
+
+        vm.expectRevert("RwaOutputConduit3/not-enough-dai");
+        outputConduit.push(1);
     }
 
     function testRevertOnInsufficientSwapGemAmount() public {
@@ -312,6 +337,28 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.quit();
 
         assertEq(dai.balanceOf(outputConduit.quitTo()), 1000 ether);
+    }
+
+    function testQuitAmountFuzz(uint256 wad) public {
+        dai.transfer(address(outputConduit), dai.balanceOf(me));
+        uint256 cBalance = dai.balanceOf(address(outputConduit));
+        uint256 qBalance = dai.balanceOf(outputConduit.quitTo());
+
+        vm.assume(cBalance >= wad);
+
+        assertEq(outputConduit.quitTo(), address(testUrn));
+
+        outputConduit.quit(wad);
+
+        assertEq(dai.balanceOf(outputConduit.quitTo()), qBalance + wad);
+        assertEq(dai.balanceOf(address(outputConduit)), cBalance - wad);
+    }
+
+    function testRevertOnQuitAmountMoreThenBalance() public {
+        assertEq(dai.balanceOf(address(outputConduit)), 0);
+
+        vm.expectRevert("RwaOutputConduit3/not-enough-dai");
+        outputConduit.quit(1);
     }
 }
 

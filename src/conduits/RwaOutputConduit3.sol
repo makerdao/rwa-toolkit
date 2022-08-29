@@ -274,6 +274,40 @@ contract RwaOutputConduit3 {
     //////////////////////////////////*/
 
     /**
+     * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
+     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
+     */
+    function push() external isMate {
+        _doPush(dai.balanceOf(address(this)), 0);
+    }
+
+    /**
+     * @notice Method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
+     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
+     * @param wad Dai amount
+     */
+    function push(uint256 wad) external isMate {
+        _doPush(wad, gem.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Flushes out any DAI balance to `quitTo` address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     */
+    function quit() external isMate {
+        _doQuit(dai.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Flushes out specific amount of DAI balance to `quitTo` address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     * @param wad Dai amount
+     */
+    function quit(uint256 wad) external isMate {
+        _doQuit(wad);
+    }
+
+    /**
      * @notice Internal method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
      * @param wad Dai amount
      * @param prevGemBalance Previouse GEM balance used to track exect maount of GEM swapped for DAI from PSM (Set 0 if you want to get all outstanding GEM balance)
@@ -298,44 +332,10 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
-     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
-     */
-    function push() external isMate {
-        _doPush(dai.balanceOf(address(this)), 0);
-    }
-
-    /**
-     * @notice Method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
-     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
-     * @param wad Dai amount
-     */
-    function push(uint256 wad) external isMate {
-        _doPush(wad, gem.balanceOf(address(this)));
-    }
-
-    /**
      * @notice Internal method which flushes out a specific DAI balance to `quitTo` address.
      */
     function _doQuit(uint256 wad) internal {
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);
-    }
-
-    /**
-     * @notice Flushes out any DAI balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
-     */
-    function quit() external isMate {
-        _doQuit(dai.balanceOf(address(this)));
-    }
-
-    /**
-     * @notice Flushes out specific amount of DAI balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
-     * @param wad Dai amount
-     */
-    function quit(uint256 wad) external isMate {
-        _doQuit(wad);
     }
 }

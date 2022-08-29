@@ -197,29 +197,10 @@ contract RwaInputConduit3 {
     //////////////////////////////////*/
 
     /**
-     * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
-     * @dev `msg.sender` must first receive push acess through mate().
-     */
-    function push() external isMate {
-        uint256 balance = gem.balanceOf(address(this));
-
-        psm.sellGem(address(this), balance);
-
-        uint256 daiBalance = dai.balanceOf(address(this));
-        dai.transfer(to, daiBalance);
-
-        emit Push(to, daiBalance);
-    }
-
-    /**
-     * @notice Method to swap specific amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @notice Internal method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
      * @param amt Gem amount
      */
-    function push(uint256 amt) external isMate {
-        uint256 gemBalance = gem.balanceOf(address(this));
-        require(gemBalance >= amt, "RwaInputConduit3/not-enough-gems");
-
+    function _doPush(uint256 amt) internal {
         psm.sellGem(address(this), amt);
 
         uint256 daiBalance = dai.balanceOf(address(this));
@@ -229,14 +210,37 @@ contract RwaInputConduit3 {
     }
 
     /**
+     * @notice Method to swap GEM contract balance to DAI through PSM and push it into RwaUrn address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     */
+    function push() external isMate {
+        _doPush(gem.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Method to swap specific amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
+     * @dev `msg.sender` must first receive push acess through mate().
+     * @param amt Gem amount
+     */
+    function push(uint256 amt) external isMate {
+        _doPush(amt);
+    }
+
+    /**
+     * @notice Internal method wich flushes out specific amount of GEM balance to `quitTo` address.
+     * @param amt Gem amount
+     */
+    function _doQuit(uint256 amt) internal {
+        gem.transfer(quitTo, amt);
+        emit Quit(quitTo, amt);
+    }
+
+    /**
      * @notice Flushes out any GEM balance to `quitTo` address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
     function quit() external isMate {
-        uint256 gemBalance = gem.balanceOf(address(this));
-
-        gem.transfer(quitTo, gemBalance);
-        emit Quit(quitTo, gemBalance);
+        _doQuit(gem.balanceOf(address(this)));
     }
 
     /**
@@ -245,10 +249,6 @@ contract RwaInputConduit3 {
      * @param amt Gem amount
      */
     function quit(uint256 amt) external isMate {
-        uint256 gemBalance = gem.balanceOf(address(this));
-        require(gemBalance >= amt, "RwaInputConduit3/not-enough-gems");
-
-        gem.transfer(quitTo, amt);
-        emit Quit(quitTo, amt);
+        _doQuit(amt);
     }
 }

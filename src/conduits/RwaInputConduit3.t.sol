@@ -279,7 +279,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     function testRevertOnPushAmountMoreThenGemBalance() public {
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
 
-        vm.expectRevert("RwaInputConduit3/not-enough-gems");
+        vm.expectRevert("ds-token-insufficient-balance");
         inputConduit.push(1);
     }
 
@@ -340,7 +340,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     function testRevertOnQuitAmountMoreThenGemBalance() public {
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
 
-        vm.expectRevert("RwaInputConduit3/not-enough-gems");
+        vm.expectRevert("ds-token-insufficient-balance");
         inputConduit.quit(1);
     }
 }

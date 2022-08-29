@@ -201,7 +201,7 @@ contract RwaInputConduit3 {
      * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external isMate {
-        _doPush(gem.balanceOf(address(this)));
+        _doPush(gem.balanceOf(address(this)), 0);
     }
 
     /**
@@ -210,7 +210,7 @@ contract RwaInputConduit3 {
      * @param amt Gem amount.
      */
     function push(uint256 amt) external isMate {
-        _doPush(amt);
+        _doPush(amt, dai.balanceOf(address(this)));
     }
 
     /**
@@ -233,14 +233,16 @@ contract RwaInputConduit3 {
     /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
      * @param amt GEM amount.
+     * @param prevDaiBalance Previous DAI balance used to track exact amount of GEM swapped for DAI in the PSM. Set to `0` if you want to get all outstanding DAI balance.
      */
-    function _doPush(uint256 amt) internal {
+    function _doPush(uint256 amt, uint256 prevDaiBalance) internal {
         psm.sellGem(address(this), amt);
 
         uint256 daiBalance = dai.balanceOf(address(this));
-        dai.transfer(to, daiBalance);
+        uint256 daiPushAmt = sub(daiBalance, prevDaiBalance);
+        dai.transfer(to, daiPushAmt);
 
-        emit Push(to, daiBalance);
+        emit Push(to, daiPushAmt);
     }
 
     /**
@@ -250,5 +252,9 @@ contract RwaInputConduit3 {
     function _doQuit(uint256 amt) internal {
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
+    }
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "Math/sub-overflow");
     }
 }

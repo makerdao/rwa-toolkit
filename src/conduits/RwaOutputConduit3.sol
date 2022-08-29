@@ -29,11 +29,11 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - `pick` whitelist are managed by `kiss() / diss()` methods.
- *  - Require PSM address in constructor
- *  - `pick` can be called to set `to` address. Address shoild be whitelisted be GOV.
+ *  - `pick` whitelist is managed by `kiss() / diss()` methods.
+ *  - Requires a PSM address in the constructor.
+ *  - `pick` can be called to set the `to` address. Eligible `to` addresses should be whitelisted by an admin through `kiss`.
  *  - The `push()` method swaps DAI to GEM using PSM and set `to` to zero address.
- *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by the admin.
+ *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
@@ -56,7 +56,7 @@ contract RwaOutputConduit3 {
     /// @notice Dai output address
     address public to;
 
-    /// @dev Whitelist for addresses which can be picked.
+    /// @dev Whitelist for addresses which can be picked. `bud[who]`
     mapping(address => uint256) public bud;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
@@ -260,8 +260,9 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Sets `who` address as the recipient. `who` address should be whitelisted using `kiss`
-     * @param who Recipient Dai address.
+     * @notice Sets `who` address as the recipient.
+     * @param who Recipient address.
+     * @dev `who` address should have been whitelisted using `kiss`.
      */
     function pick(address who) public isMate {
         require(bud[who] == 1 || who == address(0), "RwaOutputConduit3/not-bud");
@@ -275,16 +276,16 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
-     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
+     * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
      */
     function push() external isMate {
         _doPush(dai.balanceOf(address(this)), 0);
     }
 
     /**
-     * @notice Method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
-     * @dev `msg.sender` must have been `mate`d and `to` must be setted.
-     * @param wad Dai amount
+     * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
+     * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
+     * @param wad DAI amount.
      */
     function push(uint256 wad) external isMate {
         _doPush(wad, gem.balanceOf(address(this)));
@@ -292,7 +293,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out any DAI balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function quit() external isMate {
         _doQuit(dai.balanceOf(address(this)));
@@ -300,29 +301,29 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out specific amount of DAI balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
-     * @param wad Dai amount
+     * @dev `msg.sender` must have received push access through `mate()`.
+     * @param wad DAI amount.
      */
     function quit(uint256 wad) external isMate {
         _doQuit(wad);
     }
 
     /**
-     * @notice Internal method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
-     * @param wad Dai amount
-     * @param prevGemBalance Previouse GEM balance used to track exect maount of GEM swapped for DAI from PSM (Set 0 if you want to get all outstanding GEM balance)
+     * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
+     * @param wad DAI amount.
+     * @param prevGemBalance Previous GEM balance used to track exact amount of GEM swapped for DAI in the PSM. Set to `0` if you want to get all outstanding GEM balance.
      */
     function _doPush(uint256 wad, uint256 prevGemBalance) internal {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
-        // We can lose some dust there. For exm: USDC has 6 dec and DAI has 18
+        // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
         uint256 gemAmount = wad / toGemConversionFactor;
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
         psm.buyGem(address(this), gemAmount);
 
         uint256 gemBalance = gem.balanceOf(address(this));
-        uint256 gemPushAmt = gemBalance - prevGemBalance;
+        uint256 gemPushAmt = sub(gemBalance, prevGemBalance);
         address _to = to;
 
         to = address(0);
@@ -332,10 +333,15 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Internal method which flushes out a specific DAI balance to `quitTo` address.
+     * @notice Flushes out the specified amount of DAI to `quitTo` address.
+     * @param wad The DAI amount.
      */
     function _doQuit(uint256 wad) internal {
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);
+    }
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "Math/sub-overflow");
     }
 }

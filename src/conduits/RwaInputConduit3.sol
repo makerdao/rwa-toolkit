@@ -197,19 +197,6 @@ contract RwaInputConduit3 {
     //////////////////////////////////*/
 
     /**
-     * @notice Internal method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
-     * @param amt Gem amount
-     */
-    function _doPush(uint256 amt) internal {
-        psm.sellGem(address(this), amt);
-
-        uint256 daiBalance = dai.balanceOf(address(this));
-        dai.transfer(to, daiBalance);
-
-        emit Push(to, daiBalance);
-    }
-
-    /**
      * @notice Method to swap GEM contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
@@ -227,15 +214,6 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Internal method wich flushes out specific amount of GEM balance to `quitTo` address.
-     * @param amt Gem amount
-     */
-    function _doQuit(uint256 amt) internal {
-        gem.transfer(quitTo, amt);
-        emit Quit(quitTo, amt);
-    }
-
-    /**
      * @notice Flushes out any GEM balance to `quitTo` address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
@@ -250,5 +228,27 @@ contract RwaInputConduit3 {
      */
     function quit(uint256 amt) external isMate {
         _doQuit(amt);
+    }
+
+    /**
+     * @notice Internal method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
+     * @param amt Gem amount
+     */
+    function _doPush(uint256 amt) internal {
+        psm.sellGem(address(this), amt);
+
+        uint256 daiBalance = dai.balanceOf(address(this));
+        dai.transfer(to, daiBalance);
+
+        emit Push(to, daiBalance);
+    }
+
+    /**
+     * @notice Internal method wich flushes out specific amount of GEM balance to `quitTo` address.
+     * @param amt Gem amount
+     */
+    function _doQuit(uint256 amt) internal {
+        gem.transfer(quitTo, amt);
+        emit Quit(quitTo, amt);
     }
 }

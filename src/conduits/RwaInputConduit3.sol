@@ -31,7 +31,9 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
+ *  - THe `push()` method with `amount` argument swaps specified amount of GEM to DAI using PSM
  *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
+ *  - The `quit` method with `amount` argument allows moving specified amount of GEM balance to `quitTo`.
  *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
@@ -206,7 +208,7 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @dev `msg.sender` must have received push access through `mate()`.
      * @param amt Gem amount.
      */
     function push(uint256 amt) external isMate {
@@ -253,6 +255,10 @@ contract RwaInputConduit3 {
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
     }
+
+    /*//////////////////////////////////
+                    Math
+    //////////////////////////////////*/
 
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");

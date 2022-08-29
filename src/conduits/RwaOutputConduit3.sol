@@ -276,8 +276,9 @@ contract RwaOutputConduit3 {
     /**
      * @notice Internal method to swap specific amount of DAI contract balance to GEM through PSM and push it to the recipient address.
      * @param wad Dai amount
+     * @param prevGemBalance Previouse GEM balance used to track exect maount of GEM swapped for DAI from PSM (Set 0 if you want to get all outstanding GEM balance)
      */
-    function _doPush(uint256 wad) internal {
+    function _doPush(uint256 wad, uint256 prevGemBalance) internal {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We can lose some dust there. For exm: USDC has 6 dec and DAI has 18
@@ -287,12 +288,13 @@ contract RwaOutputConduit3 {
         psm.buyGem(address(this), gemAmount);
 
         uint256 gemBalance = gem.balanceOf(address(this));
+        uint256 gemPushAmt = gemBalance - prevGemBalance;
         address _to = to;
 
         to = address(0);
-        gem.transfer(_to, gemBalance);
+        gem.transfer(_to, gemPushAmt);
 
-        emit Push(_to, gemBalance);
+        emit Push(_to, gemPushAmt);
     }
 
     /**
@@ -300,7 +302,7 @@ contract RwaOutputConduit3 {
      * @dev `msg.sender` must have been `mate`d and `to` must be setted.
      */
     function push() external isMate {
-        _doPush(dai.balanceOf(address(this)));
+        _doPush(dai.balanceOf(address(this)), 0);
     }
 
     /**
@@ -309,7 +311,7 @@ contract RwaOutputConduit3 {
      * @param wad Dai amount
      */
     function push(uint256 wad) external isMate {
-        _doPush(wad);
+        _doPush(wad, gem.balanceOf(address(this)));
     }
 
     /**

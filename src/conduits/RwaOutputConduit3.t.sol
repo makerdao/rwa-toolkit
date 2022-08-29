@@ -290,6 +290,29 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), address(0));
     }
 
+    function testPushAmountWhenAlreadyHaveSomeGemBalance() public {
+        usdx.mint(100 * USDX_BASE_UNIT);
+        usdx.transfer(address(outputConduit), 100 * USDX_BASE_UNIT);
+
+        assertEq(outputConduit.to(), me);
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
+        assertEq(dai.balanceOf(address(me)), 1000 ether);
+
+        dai.transfer(address(outputConduit), 500 ether);
+
+        assertEq(dai.balanceOf(me), 500 ether);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(me), 500 * USDX_BASE_UNIT);
+        outputConduit.push(500 ether);
+
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
+        assertEq(outputConduit.to(), address(0));
+    }
+
     function testPushAmountFuzz(uint256 wad) public {
         assertEq(outputConduit.to(), me);
         dai.transfer(address(outputConduit), dai.balanceOf(me));

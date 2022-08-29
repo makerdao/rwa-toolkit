@@ -218,7 +218,7 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Method to swap specific amount of USDC contract balance to DAI through PSM and push it into RwaUrn address.
+     * @notice Method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      * @param amt Gem amount
      */

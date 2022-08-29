@@ -258,6 +258,56 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(testUrn.balance(address(dai)), 500 ether);
     }
 
+    function testPushAmountWhenHaveSomeDaiBalanceGetExectAmount() public {
+        dai.mint(address(inputConduit), 100 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push(500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+    }
+
+    function testPushAmountWhenHaveSomeDaiBalanceGetAll() public {
+        dai.mint(address(inputConduit), 100 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 600 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 0);
+    }
+
     function testPushAmountFuzz(uint256 amt) public {
         uint256 usdxBalanceBefore = usdx.balanceOf(me);
         usdx.transfer(address(inputConduit), usdxBalanceBefore);

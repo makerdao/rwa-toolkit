@@ -58,6 +58,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
     uint256 constant USDX_BASE_UNIT = 10**6;
     uint256 constant USDX_MINT_AMOUNT = 1000 * USDX_BASE_UNIT;
+    uint256 constant USDX_DAI_DIF_DECIMALS = 10**12;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -298,19 +299,22 @@ contract RwaOutputConduit3Test is Test, DSMath {
         wad = bound(wad, 10**18, cDaiBalance);
 
         vm.expectEmit(true, true, false, false);
-        emit Push(address(me), wad / 10**12);
+        emit Push(address(me), wad / USDX_DAI_DIF_DECIMALS);
         outputConduit.push(wad);
 
-        assertEq(usdx.balanceOf(me), usdxBalance + wad / 10**12);
+        assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_DIF_DECIMALS);
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
-        assertEq(dai.balanceOf(address(outputConduit)), cDaiBalance - (wad / 10**12) * 10**12);
+        assertEq(
+            dai.balanceOf(address(outputConduit)),
+            cDaiBalance - (wad / USDX_DAI_DIF_DECIMALS) * USDX_DAI_DIF_DECIMALS
+        );
         assertEq(outputConduit.to(), address(0));
     }
 
     function testRevertOnPushAmountMoreThenBalance() public {
         assertEq(dai.balanceOf(address(outputConduit)), 0);
 
-        vm.expectRevert("RwaOutputConduit3/not-enough-dai");
+        vm.expectRevert("RwaOutputConduit3/insufficient-swap-gem-amount");
         outputConduit.push(1);
     }
 
@@ -381,7 +385,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testRevertOnQuitAmountMoreThenBalance() public {
         assertEq(dai.balanceOf(address(outputConduit)), 0);
 
-        vm.expectRevert("RwaOutputConduit3/not-enough-dai");
+        vm.expectRevert("Dai/insufficient-balance");
         outputConduit.quit(1);
     }
 }

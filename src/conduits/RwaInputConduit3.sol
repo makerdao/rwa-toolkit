@@ -197,17 +197,17 @@ contract RwaInputConduit3 {
     //////////////////////////////////*/
 
     /**
-     * @notice Method to swap GEM contract balance to DAI through PSM and push it into RwaUrn address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @notice Swaps the GEM balance of this contract into DAI through the PSM and push it into the `to` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external isMate {
         _doPush(gem.balanceOf(address(this)));
     }
 
     /**
-     * @notice Method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
      * @dev `msg.sender` must first receive push acess through mate().
-     * @param amt Gem amount
+     * @param amt Gem amount.
      */
     function push(uint256 amt) external isMate {
         _doPush(amt);
@@ -215,7 +215,7 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Flushes out any GEM balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function quit() external isMate {
         _doQuit(gem.balanceOf(address(this)));
@@ -223,16 +223,16 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Flushes out specific amount of GEM balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
-     * @param amt Gem amount
+     * @dev `msg.sender` must have received push access through `mate()`.
+     * @param amt Gem amount.
      */
     function quit(uint256 amt) external isMate {
         _doQuit(amt);
     }
 
     /**
-     * @notice Internal method to swap specific amount of GEM contract balance to DAI through PSM and push it into RwaUrn address.
-     * @param amt Gem amount
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
+     * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
         psm.sellGem(address(this), amt);
@@ -244,8 +244,8 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Internal method wich flushes out specific amount of GEM balance to `quitTo` address.
-     * @param amt Gem amount
+     * @notice Flushes out the specified amount of GEM to the `quitTo` address.
+     * @param amt GEM amount.
      */
     function _doQuit(uint256 amt) internal {
         gem.transfer(quitTo, amt);

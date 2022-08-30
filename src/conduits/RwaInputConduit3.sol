@@ -1,5 +1,5 @@
-// Copyright (C) 2020, 2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2022 Dai Foundation
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,8 +13,6 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
 import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";

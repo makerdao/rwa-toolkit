@@ -1,9 +1,5 @@
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// RwaUrn.t.sol -- Tests for the Urn contract
-//
-// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2021-2022 Dai Foundation
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -290,7 +286,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), address(0));
     }
 
-    function testPushAmountWhenAlreadyHaveSomeGemBalanceGetExectAmount() public {
+    function testPushAmountWhenAlreadyHaveSomeGemBalanceGetExactAmount() public {
         usdx.mint(100 * USDX_BASE_UNIT);
         usdx.transfer(address(outputConduit), 100 * USDX_BASE_UNIT);
 

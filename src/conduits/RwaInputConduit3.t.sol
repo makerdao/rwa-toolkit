@@ -1,9 +1,5 @@
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// RwaUrn.t.sol -- Tests for the Urn contract
-//
-// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2021-2022 Dai Foundation
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -41,7 +37,7 @@ import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 contract RwaInputConduit3Test is Test, DSMath {
     address me;
 
-    TestVat vat;
+    Vat vat;
     Spotter spot;
     TestVow vow;
     DSValue pip;
@@ -57,7 +53,9 @@ contract RwaInputConduit3Test is Test, DSMath {
     bytes32 constant ilk = "usdx";
 
     uint256 constant USDX_BASE_UNIT = 10**6;
-    uint256 constant USDX_MINT_AMOUNT = 1100 * USDX_BASE_UNIT;
+    uint256 constant USDX_DAI_DIF_DECIMALS = 10**12;
+    uint256 constant USDX_MINT_AMOUNT = 1000 * USDX_BASE_UNIT;
+    uint256 constant PSM_LINE = 1000 * 10**18;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -78,7 +76,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     function setUpMCDandPSM() internal {
         me = address(this);
 
-        vat = new TestVat();
+        vat = new Vat();
         vat = vat;
 
         spot = new Spotter(address(vat));
@@ -110,8 +108,8 @@ contract RwaInputConduit3Test is Test, DSMath {
         spot.file(ilk, bytes32("mat"), ray(1 ether));
         spot.poke(ilk);
 
-        vat.file(ilk, "line", rad(1000 ether));
-        vat.file("Line", rad(1000 ether));
+        vat.file(ilk, "line", rad(PSM_LINE));
+        vat.file("Line", rad(PSM_LINE));
     }
 
     function setUp() public {
@@ -256,22 +254,101 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(testUrn.balance(address(dai)), 500 ether);
     }
 
-    function testRevertOnSwapAboveLine() public {
+    function testPushAmountWhenHaveSomeDaiBalanceGetExactAmount() public {
+        dai.mint(address(inputConduit), 100 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
         assertEq(usdx.balanceOf(address(joinA)), 0);
 
-        usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push(500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+    }
+
+    function testPushAmountWhenHaveSomeDaiBalanceGetAll() public {
+        dai.mint(address(inputConduit), 100 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(testUrn.balance(address(dai)), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 600 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 0);
+    }
+
+    function testPushAmountFuzz(uint256 amt) public {
+        uint256 usdxBalanceBefore = usdx.balanceOf(me);
+        usdx.transfer(address(inputConduit), usdxBalanceBefore);
+        assertEq(usdx.balanceOf(me), 0);
+
+        uint256 usdxCBalanceBefore = usdx.balanceOf(address(inputConduit));
+        uint256 urnDaiBalanceBefore = usdx.balanceOf(address(testUrn));
+
+        amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalanceBefore);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), amt * USDX_DAI_DIF_DECIMALS);
+        inputConduit.push(amt);
+
+        assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalanceBefore - amt);
+        assertEq(testUrn.balance(address(dai)), urnDaiBalanceBefore + amt * USDX_DAI_DIF_DECIMALS);
+    }
+
+    function testRevertOnPushAmountMoreThenGemBalance() public {
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+
+        vm.expectRevert("ds-token-insufficient-balance");
+        inputConduit.push(1);
+    }
+
+    function testRevertOnSwapAboveLine() public {
+        usdx.mint(100 * USDX_BASE_UNIT);
+        uint256 usdxMintedTotal = USDX_MINT_AMOUNT + 100 * USDX_BASE_UNIT;
+
+        assertGt(usdxMintedTotal * USDX_DAI_DIF_DECIMALS, PSM_LINE);
+        assertEq(usdx.balanceOf(me), usdxMintedTotal);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
+
+        usdx.transfer(address(inputConduit), usdxMintedTotal);
 
         assertEq(usdx.balanceOf(me), 0);
-        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), usdxMintedTotal);
 
         assertEq(testUrn.balance(address(dai)), 0);
 
         vm.expectRevert("Vat/ceiling-exceeded");
         inputConduit.push();
 
-        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), usdxMintedTotal);
         assertEq(testUrn.balance(address(dai)), 0);
     }
 
@@ -282,21 +359,41 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
 
+        vm.expectEmit(true, true, false, false);
+        emit Quit(inputConduit.quitTo(), USDX_MINT_AMOUNT);
         inputConduit.quit();
 
         assertEq(usdx.balanceOf(inputConduit.quitTo()), USDX_MINT_AMOUNT);
+    }
+
+    function testQuitAmountFuzz(uint256 amt) public {
+        assertEq(inputConduit.quitTo(), me);
+        uint256 usdxBalance = usdx.balanceOf(me);
+        usdx.transfer(address(inputConduit), usdxBalance);
+        uint256 usdxCBalance = usdx.balanceOf(address(inputConduit));
+        assertEq(usdx.balanceOf(me), 0);
+
+        amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalance);
+
+        vm.expectEmit(true, true, false, false);
+        emit Quit(inputConduit.quitTo(), amt);
+        inputConduit.quit(amt);
+
+        assertEq(usdx.balanceOf(inputConduit.quitTo()), amt);
+        assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalance - amt);
+    }
+
+    function testRevertOnQuitAmountMoreThenGemBalance() public {
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+
+        vm.expectRevert("ds-token-insufficient-balance");
+        inputConduit.quit(1);
     }
 }
 
 contract TestToken is DSToken {
     constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
         decimals = decimals_;
-    }
-}
-
-contract TestVat is Vat {
-    function mint(address usr, uint256 rad) public {
-        dai[usr] += rad;
     }
 }
 

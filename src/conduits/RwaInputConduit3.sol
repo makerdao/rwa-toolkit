@@ -1,5 +1,5 @@
-// Copyright (C) 2020, 2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2022 Dai Foundation
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,8 +13,6 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.6.12;
 
 import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
@@ -31,7 +29,9 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
+ *  - THe `push()` method with `amount` argument swaps specified amount of GEM to DAI using PSM
  *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
+ *  - The `quit` method with `amount` argument allows moving specified amount of GEM balance to `quitTo`.
  *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
@@ -197,28 +197,68 @@ contract RwaInputConduit3 {
     //////////////////////////////////*/
 
     /**
-     * @notice Method to swap USDC contract balance to DAI through PSM and push it into RwaUrn address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @notice Swaps the GEM balance of this contract into DAI through the PSM and push it into the `to` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external isMate {
-        uint256 balance = gem.balanceOf(address(this));
+        _doPush(gem.balanceOf(address(this)), 0);
+    }
 
-        psm.sellGem(address(this), balance);
-
-        uint256 daiBalance = dai.balanceOf(address(this));
-        dai.transfer(to, daiBalance);
-
-        emit Push(to, daiBalance);
+    /**
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
+     * @param amt Gem amount.
+     */
+    function push(uint256 amt) external isMate {
+        _doPush(amt, dai.balanceOf(address(this)));
     }
 
     /**
      * @notice Flushes out any GEM balance to `quitTo` address.
-     * @dev `msg.sender` must first receive push acess through mate().
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function quit() external isMate {
-        uint256 wad = gem.balanceOf(address(this));
+        _doQuit(gem.balanceOf(address(this)));
+    }
 
-        gem.transfer(quitTo, wad);
-        emit Quit(quitTo, wad);
+    /**
+     * @notice Flushes out specific amount of GEM balance to `quitTo` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
+     * @param amt Gem amount.
+     */
+    function quit(uint256 amt) external isMate {
+        _doQuit(amt);
+    }
+
+    /**
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
+     * @param amt GEM amount.
+     * @param prevDaiBalance Previous DAI balance used to track exact amount of GEM swapped for DAI in the PSM. Set to `0` if you want to get all outstanding DAI balance.
+     */
+    function _doPush(uint256 amt, uint256 prevDaiBalance) internal {
+        psm.sellGem(address(this), amt);
+
+        uint256 daiBalance = dai.balanceOf(address(this));
+        uint256 daiPushAmt = sub(daiBalance, prevDaiBalance);
+        dai.transfer(to, daiPushAmt);
+
+        emit Push(to, daiPushAmt);
+    }
+
+    /**
+     * @notice Flushes out the specified amount of GEM to the `quitTo` address.
+     * @param amt GEM amount.
+     */
+    function _doQuit(uint256 amt) internal {
+        gem.transfer(quitTo, amt);
+        emit Quit(quitTo, amt);
+    }
+
+    /*//////////////////////////////////
+                    Math
+    //////////////////////////////////*/
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "Math/sub-overflow");
     }
 }

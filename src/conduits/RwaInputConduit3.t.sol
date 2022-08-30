@@ -37,7 +37,7 @@ import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 contract RwaInputConduit3Test is Test, DSMath {
     address me;
 
-    TestVat vat;
+    Vat vat;
     Spotter spot;
     TestVow vow;
     DSValue pip;
@@ -76,7 +76,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     function setUpMCDandPSM() internal {
         me = address(this);
 
-        vat = new TestVat();
+        vat = new Vat();
         vat = vat;
 
         spot = new Spotter(address(vat));
@@ -394,12 +394,6 @@ contract RwaInputConduit3Test is Test, DSMath {
 contract TestToken is DSToken {
     constructor(string memory symbol_, uint8 decimals_) public DSToken(symbol_) {
         decimals = decimals_;
-    }
-}
-
-contract TestVat is Vat {
-    function mint(address usr, uint256 rad) public {
-        dai[usr] += rad;
     }
 }
 

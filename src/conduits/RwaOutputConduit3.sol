@@ -300,7 +300,7 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Flushes out specific amount of DAI balance to `quitTo` address.
+     * @notice Flushes out the specified amount of DAI to the `quitTo` address.
      * @dev `msg.sender` must have received push access through `mate()`.
      * @param wad DAI amount.
      */

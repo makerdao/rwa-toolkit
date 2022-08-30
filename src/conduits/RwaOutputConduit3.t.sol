@@ -386,11 +386,11 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(dai.balanceOf(address(outputConduit)), 1100 ether);
 
-        vat.mint(address(daiJoin), 1100 ether * 10**27);
+        vat.mint(address(daiJoin), rad(1100 ether));
 
         vm.expectRevert();
         // It will revert on vat.frob()
-        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink = 1000 and dink = 1100
+        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink = 1000 and dink = -1100
         outputConduit.push();
 
         assertEq(dai.balanceOf(address(outputConduit)), 1100 ether);

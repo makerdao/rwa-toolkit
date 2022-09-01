@@ -116,7 +116,8 @@ contract RwaInputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = new TestUrn();
-        inputConduit = new RwaInputConduit3(address(psmA), address(testUrn), address(this));
+        inputConduit = new RwaInputConduit3(address(psmA), address(testUrn));
+        inputConduit.file("quitTo", address(this));
         inputConduit.mate(me);
     }
 
@@ -124,7 +125,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn), address(this));
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
 
         assertEq(c.wards(address(this)), 1);
     }

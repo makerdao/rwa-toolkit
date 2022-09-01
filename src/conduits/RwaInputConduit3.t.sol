@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
+// Copyright (C) 2021-2022 Dai Foundation
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -130,6 +132,11 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(c.wards(address(this)), 1);
     }
 
+    function testRevertOnDeployWithZeroToAddress() public {
+        vm.expectRevert("RwaInputConduit3/invalid-to-address");
+        new RwaInputConduit3(address(psmA), address(0));
+    }
+
     function testGiveUnlimitedApprovalToPsmGemJoinOnDeploy() public {
         assertEq(usdx.allowance(address(inputConduit), address(joinA)), type(uint256).max);
     }
@@ -222,6 +229,9 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaInputConduit3/not-authorized");
         inputConduit.file(bytes32("quitTo"), address(0));
+
+        vm.expectRevert("RwaInputConduit3/not-authorized");
+        inputConduit.quitDai(address(0));
     }
 
     function testRevertOnNotMateMethods() public {
@@ -301,8 +311,8 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), 600 ether);
-        assertEq(dai.balanceOf(address(inputConduit)), 0);
+        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
     }
 
     function testPushAmountFuzz(uint256 amt) public {
@@ -389,6 +399,30 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("ds-token-insufficient-balance");
         inputConduit.quit(1);
+    }
+
+    function testRevertOnQuitWhenQuitToAddressNotSet() public {
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
+        c.mate(me);
+
+        assertEq(c.quitTo(), address(0));
+
+        vm.expectRevert("RwaInputConduit3/invalid-quit-to-address");
+        c.quit();
+    }
+
+    function testQuitDai() public {
+        uint256 wad = 100 ether;
+
+        dai.mint(address(me), wad);
+        dai.transfer(address(inputConduit), wad);
+        uint256 daiBalance = dai.balanceOf(me);
+
+        assertEq(dai.balanceOf(address(inputConduit)), wad);
+
+        inputConduit.quitDai(me);
+        assertEq(dai.balanceOf(me), daiBalance + wad);
+        assertEq(dai.balanceOf(address(inputConduit)), 0);
     }
 }
 

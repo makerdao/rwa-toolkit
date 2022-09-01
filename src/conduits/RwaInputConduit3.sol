@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
+// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
+// Copyright (C) 2021-2022 Dai Foundation
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -110,6 +113,8 @@ contract RwaInputConduit3 {
      * @param _to RwaUrn contract address.
      */
     constructor(address _psm, address _to) public {
+        require(_to != address(0), "RwaInputConduit3/invalid-to-address");
+
         DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
         dai = DSTokenAbstract(PsmAbstract(_psm).dai());

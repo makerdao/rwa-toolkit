@@ -50,8 +50,6 @@ contract RwaJarTest is Test, DSMath {
         daiJoin = new DaiJoin(address(vat), address(dai));
 
         vat.rely(address(daiJoin));
-        // Authorizes daiJoin to operate on behalf of the test contract.
-        vat.hope(address(daiJoin));
         dai.setOwner(address(daiJoin));
 
         chainlog.setAddress("MCD_VOW", VOW);
@@ -99,6 +97,8 @@ contract RwaJarTest is Test, DSMath {
     function _createFakeDai(address usr, uint256 wad) private {
         // Set initial balance for `usr` in the vat
         stdstore.target(address(vat)).sig("dai(address)").with_key(address(this)).checked_write(_rad(wad));
+        // Authorizes daiJoin to operate on behalf of the test contract.
+        vat.hope(address(daiJoin));
         // Converts the minted Dai into ERC-20 Dai and sends it to `usr`.
         daiJoin.exit(usr, wad);
     }

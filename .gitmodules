@@ -34,3 +34,6 @@
 [submodule "lib/ilk-registry"]
 	path = lib/ilk-registry
 	url = https://github.com/makerdao/ilk-registry
+[submodule "lib/dss-interfaces"]
+	path = lib/dss-interfaces
+	url = https://github.com/makerdao/dss-interfaces

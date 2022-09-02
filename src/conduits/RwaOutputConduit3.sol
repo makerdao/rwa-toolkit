@@ -328,7 +328,7 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmount = wad / toGemConversionFactor;
+        uint256 gemAmount = getGemBuyAmount(wad, psm.tout());
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
         uint256 prevGemBalance = gem.balanceOf(address(this));
@@ -359,7 +359,17 @@ contract RwaOutputConduit3 {
                     Math
     //////////////////////////////////*/
 
+    uint256 constant WAD = 10**18;
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
+    }
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x);
+    }
+
+    function getGemBuyAmount(uint256 wad, uint256 tout) internal view returns (uint256) {
+        return (wad * WAD) / (WAD + tout) / toGemConversionFactor;
     }
 }

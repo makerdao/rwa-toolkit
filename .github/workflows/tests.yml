@@ -43,7 +43,7 @@ jobs:
         id: test
 
       # Fork mode
-      - name: Run Forge Tests (Fokr)
+      - name: Run Forge Tests (Fork)
         run: |
           forge test -vvv --fork-url=$FORK_URL --match-path "**.integration.t.sol"
         id: test-fork

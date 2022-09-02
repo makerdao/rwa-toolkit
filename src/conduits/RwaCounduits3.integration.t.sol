@@ -74,6 +74,10 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         return (wadAmt * WAD) / (WAD + PSM_TOUT) / GEM_DAI_DIFF_DECIMALS;
     }
 
+    function getGemSellAmount(uint256 wadAmt) internal view returns (uint256) {
+        return (wadAmt * WAD) / (WAD - PSM_TIN) / GEM_DAI_DIFF_DECIMALS;
+    }
+
     function getDaiOutAmount(uint256 gemAmt) internal view returns (uint256) {
         uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
         uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
@@ -143,7 +147,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     }
 
     function testRevertInputConduitOnSwapAboveLine() public {
-        uint256 gemAmount = ART_LEFT + ART_LEFT / 5; // add 25% more then Art left to handle psm TIN fee (hopefully wont be greater then 25%)
+        uint256 gemAmount = ART_LEFT + 1; // more then ART left
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
 
@@ -201,7 +205,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     }
 
     function testRevertOutputConduitOnInsufficientGemAmountInPsm() public {
-        uint256 daiAmount = URN_INK + URN_INK / 5; // add 25% more then URN Ink to handle psm TOUT fee (hopefully wont be greater then 25%)
+        uint256 daiAmount = getDaiInAmount(URN_INK / GEM_DAI_DIFF_DECIMALS + 1 * GEM_DECIMALS); // more then INK
 
         assertEq(gem.balanceOf(address(outputConduit)), 0);
 
@@ -307,25 +311,14 @@ contract RwaConduits3PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits3TestAb
 
 contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
     constructor() public {
-        ILK = bytes32("PSM-GUSD-A");
-        psm = changelog.getAddress("MCD_PSM_GUSD_A");
+        ILK = bytes32("PSM-USDC-A");
+        psm = changelog.getAddress("MCD_PSM_USDC_A");
     }
 
     function setUp() public override {
         super.setUp();
 
-        // Add GUSD blance
-        address impl = ERC20Proxy(address(gem)).erc20Impl();
-        ERC20Store store = ERC20Store(ERC20Impl(impl).erc20Store());
-
-        vm.startPrank(impl);
-
-        store.setBalance(me, 2 * ART_LEFT);
-        store.setTotalSupply(gem.totalSupply() + 2 * ART_LEFT);
-
-        vm.stopPrank();
-
-        assertEq(gem.balanceOf(me), 2 * ART_LEFT);
+        deal(address(gem), me, 2 * ART_LEFT);
 
         // Adjust tin/tour for PSM
         vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
@@ -346,8 +339,8 @@ contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAb
 
 contract RwaConduits3PsmPAXWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
     constructor() public {
-        ILK = bytes32("PSM-MCD_PSM_USDC_A-A");
-        psm = changelog.getAddress("MCD_PSM_USDC_A");
+        ILK = bytes32("PSM-PAX-A");
+        psm = changelog.getAddress("MCD_PSM_PAX_A");
     }
 
     function setUp() public override {

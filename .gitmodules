@@ -4,9 +4,6 @@
 [submodule "lib/ds-math"]
 	path = lib/ds-math
 	url = https://github.com/dapphub/ds-math
-[submodule "lib/dss-interfaces"]
-	path = lib/dss-interfaces
-	url = https://github.com/makerdao/dss-interfaces.git
 [submodule "lib/dss-gem-joins"]
 	path = lib/dss-gem-joins
 	url = https://github.com/makerdao/dss-gem-joins

@@ -18,6 +18,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity 0.6.12;
 
+import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
+import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
@@ -39,14 +41,14 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  */
 contract RwaInputConduit3 {
     /// @notice PSM GEM token contract address
-    DSTokenAbstract public immutable gem;
+    GemAbstract public immutable gem;
     /// @notice PSM contract address
     PsmAbstract public immutable psm;
 
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
     DSTokenAbstract private __unused_gov;
     /// @notice Dai token contract address
-    DSTokenAbstract public dai;
+    DaiAbstract public dai;
     /// @notice RWA urn contract address
     address public to;
 
@@ -115,9 +117,9 @@ contract RwaInputConduit3 {
     constructor(address _psm, address _to) public {
         require(_to != address(0), "RwaInputConduit3/invalid-to-address");
 
-        DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
+        GemAbstract _gem = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
-        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
+        dai = DaiAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         to = _to;
 

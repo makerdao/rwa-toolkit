@@ -20,7 +20,7 @@ pragma solidity 0.6.12;
 
 import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
-import {GemAbstract} from "dss-interfaces/erc/GemAbstract.sol";
+import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
 import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 

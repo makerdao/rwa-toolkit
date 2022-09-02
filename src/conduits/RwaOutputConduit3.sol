@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2021-2022 Dai Foundation
+// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +22,6 @@ pragma solidity 0.6.12;
 import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
 import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
-import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
 /**
@@ -42,11 +42,11 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
-    /// @notice PSM GEM token contract address
+    /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
-    /// @notice PSM contract address
+    /// @notice PSM contract address.
     PsmAbstract public immutable psm;
-    /// @dev DAI/GEM decimal difference
+    /// @dev DAI/GEM decimal difference.
     uint256 private immutable toGemConversionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
@@ -55,8 +55,8 @@ contract RwaOutputConduit3 {
     mapping(address => uint256) public can;
 
     /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
-    DSTokenAbstract private __unused_gov;
-    /// @notice Dai token contract address
+    address private __unused_gov;
+    /// @notice Dai token contract address.
     DaiAbstract public dai;
     /// @notice Dai Recipient address.
     address public to;
@@ -224,7 +224,7 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Whitelist `who` address for `pick`
+     * @notice Whitelist `who` address for `pick`.
      * @param who The user address.
      */
     function kiss(address who) external auth {
@@ -233,7 +233,7 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Remove `who` address from `pick` whitelist
+     * @notice Remove `who` address from `pick` whitelist.
      * @param who The user address.
      */
     function diss(address who) external auth {

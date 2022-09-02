@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Copyright (C) 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
-// Copyright (C) 2021-2022 Dai Foundation
+// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +21,6 @@ pragma solidity 0.6.12;
 
 import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
 import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
-import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
@@ -46,7 +46,7 @@ contract RwaInputConduit3 {
     PsmAbstract public immutable psm;
 
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
-    DSTokenAbstract private __unused_gov;
+    address private __unused_gov;
     /// @notice Dai token contract address
     DaiAbstract public dai;
     /// @notice RWA urn contract address
@@ -232,8 +232,8 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out all outstandingDAI balance to `usr` address.
-     * @dev Can be called only by admin.
+     * @notice Flushes out all outstanding DAI balance to `usr` address.
+     * @dev Can only be called by the admin
      * @param usr Destination address.
      */
     function quitDai(address usr) external auth {

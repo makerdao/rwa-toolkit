@@ -305,6 +305,73 @@ contract RwaConduits3PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits3TestAb
     }
 }
 
+contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
+    constructor() public {
+        ILK = bytes32("PSM-GUSD-A");
+        psm = changelog.getAddress("MCD_PSM_GUSD_A");
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        // Add GUSD blance
+        address impl = ERC20Proxy(address(gem)).erc20Impl();
+        ERC20Store store = ERC20Store(ERC20Impl(impl).erc20Store());
+
+        vm.startPrank(impl);
+
+        store.setBalance(me, 2 * ART_LEFT);
+        store.setTotalSupply(gem.totalSupply() + 2 * ART_LEFT);
+
+        vm.stopPrank();
+
+        assertEq(gem.balanceOf(me), 2 * ART_LEFT);
+
+        // Adjust tin/tour for PSM
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        uint256 fee = (5 * WAD) / 100;
+        DssPsm(psm).file("tin", fee);
+        DssPsm(psm).file("tout", fee);
+
+        assertEq(DssPsm(psm).tin(), fee);
+        assertEq(DssPsm(psm).tout(), fee);
+
+        vm.stopPrank();
+
+        PSM_TIN = DssPsm(psm).tin();
+        PSM_TOUT = DssPsm(psm).tout();
+    }
+}
+
+contract RwaConduits3PsmPAXWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
+    constructor() public {
+        ILK = bytes32("PSM-MCD_PSM_USDC_A-A");
+        psm = changelog.getAddress("MCD_PSM_USDC_A");
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        deal(address(gem), me, 2 * ART_LEFT);
+
+        // Adjust tin/tour for PSM
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        uint256 fee = (5 * WAD) / 100;
+        DssPsm(psm).file("tin", fee);
+        DssPsm(psm).file("tout", fee);
+
+        assertEq(DssPsm(psm).tin(), fee);
+        assertEq(DssPsm(psm).tout(), fee);
+
+        vm.stopPrank();
+
+        PSM_TIN = DssPsm(psm).tin();
+        PSM_TOUT = DssPsm(psm).tout();
+    }
+}
+
 interface ERC20Proxy {
     function erc20Impl() external returns (address);
 

@@ -85,15 +85,15 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
 
-        gem.transfer(address(inputConduit), 500 * GEM_DECIMALS);
+        gem.transfer(address(inputConduit), gemAmount);
 
-        assertEq(gem.balanceOf(address(inputConduit)), 500 * GEM_DECIMALS);
+        assertEq(gem.balanceOf(address(inputConduit)), gemAmount);
         assertEq(dai.balanceOf(testUrn), 0);
 
         inputConduit.push();
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
-        assertEq(dai.balanceOf(testUrn), 500 ether);
+        assertEq(dai.balanceOf(testUrn), gemAmount * GEM_DAI_DIFF_DECIMALS);
     }
 
     function testInputConduitPushAmountFuzz(uint256 amt) public {

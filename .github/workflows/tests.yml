@@ -11,7 +11,7 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   # For fork mode only
-  # FORK_URL: ${{ secrets.ALCHEMY_GOERLI_ETH_RPC_URL }}
+  FORK_URL: ${{ secrets.ALCHEMY_MAINNET_ETH_RPC_URL }}
 
 jobs:
   check:
@@ -37,13 +37,13 @@ jobs:
         id: build
 
       # Standalone mode
-      - name: Run Forge Tests
-        run: |
-          forge test -vvv
-        id: test
-
-      # Fork mode
       # - name: Run Forge Tests
       #   run: |
-      #     forge test -vvv --fork-url=$FORK_URL
+      #     forge test -vvv
       #   id: test
+
+      # Fork mode
+      - name: Run Forge Tests
+        run: |
+          forge test -vvv --fork-url=$FORK_URL
+        id: test

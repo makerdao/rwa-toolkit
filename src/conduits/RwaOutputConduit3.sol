@@ -1,6 +1,3 @@
-// SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
 // SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later

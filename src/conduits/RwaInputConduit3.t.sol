@@ -321,7 +321,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), 0);
 
         uint256 usdxCBalanceBefore = usdx.balanceOf(address(inputConduit));
-        uint256 urnDaiBalanceBefore = usdx.balanceOf(address(testUrn));
+        uint256 urnUsdxBalanceBefore = usdx.balanceOf(address(testUrn));
 
         amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalanceBefore);
 
@@ -330,7 +330,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.push(amt);
 
         assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalanceBefore - amt);
-        assertEq(testUrn.balance(address(dai)), urnDaiBalanceBefore + amt * USDX_DAI_DIF_DECIMALS);
+        assertEq(testUrn.balance(address(dai)), urnUsdxBalanceBefore + amt * USDX_DAI_DIF_DECIMALS);
     }
 
     function testRevertOnPushAmountMoreThenGemBalance() public {

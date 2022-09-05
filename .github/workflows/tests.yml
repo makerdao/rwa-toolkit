@@ -11,7 +11,7 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   # For fork mode only
-  # FORK_URL: ${{ secrets.ALCHEMY_GOERLI_ETH_RPC_URL }}
+  FORK_URL: ${{ secrets.ALCHEMY_MAINNET_ETH_RPC_URL }}
 
 jobs:
   check:
@@ -39,11 +39,11 @@ jobs:
       # Standalone mode
       - name: Run Forge Tests
         run: |
-          forge test -vvv
+          forge test -vvv --no-match-path "**.integration.t.sol"
         id: test
 
       # Fork mode
-      # - name: Run Forge Tests
-      #   run: |
-      #     forge test -vvv --fork-url=$FORK_URL
-      #   id: test
+      - name: Run Forge Tests (Fork)
+        run: |
+          forge test -vvv --fork-url=$FORK_URL --match-path "**.integration.t.sol"
+        id: test-fork

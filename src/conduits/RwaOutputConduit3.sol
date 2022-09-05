@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -15,8 +16,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity 0.6.12;
 
-import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
+import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
+import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
 /**
@@ -37,11 +39,11 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
-    /// @notice PSM GEM token contract address
-    DSTokenAbstract public immutable gem;
-    /// @notice PSM contract address
+    /// @notice PSM GEM token contract address.
+    GemAbstract public immutable gem;
+    /// @notice PSM contract address.
     PsmAbstract public immutable psm;
-    /// @dev DAI/GEM decimal difference
+    /// @dev DAI/GEM decimal difference.
     uint256 private immutable toGemConversionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
@@ -50,9 +52,9 @@ contract RwaOutputConduit3 {
     mapping(address => uint256) public can;
 
     /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
-    DSTokenAbstract private __unused_gov;
-    /// @notice Dai token contract address
-    DSTokenAbstract public dai;
+    address private __unused_gov;
+    /// @notice Dai token contract address.
+    DaiAbstract public dai;
     /// @notice Dai Recipient address.
     address public to;
 
@@ -131,14 +133,12 @@ contract RwaOutputConduit3 {
     /**
      * @notice Defines PSM and quitTo addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
-     * @param _quitTo Address to where outstanding GEM balance will go after `quit`
      */
-    constructor(address _psm, address _quitTo) public {
-        DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
+    constructor(address _psm) public {
+        GemAbstract _gem = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
         gem = _gem;
-        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
-        quitTo = _quitTo;
+        dai = DaiAbstract(PsmAbstract(_psm).dai());
 
         uint256 gemDecimals = _gem.decimals();
         uint256 daiDecimals = dai.decimals();
@@ -221,19 +221,19 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Whitelist `who` address for `pick`
+     * @notice Whitelist `who` address for `pick`.
      * @param who The user address.
      */
-    function kiss(address who) public auth {
+    function kiss(address who) external auth {
         bud[who] = 1;
         emit Kiss(who);
     }
 
     /**
-     * @notice Remove `who` address from `pick` whitelist
+     * @notice Remove `who` address from `pick` whitelist.
      * @param who The user address.
      */
-    function diss(address who) public auth {
+    function diss(address who) external auth {
         if (to == who) to = address(0);
         bud[who] = 0;
         emit Diss(who);
@@ -264,7 +264,7 @@ contract RwaOutputConduit3 {
      * @param who Recipient address.
      * @dev `who` address should have been whitelisted using `kiss`.
      */
-    function pick(address who) public isMate {
+    function pick(address who) external isMate {
         require(bud[who] == 1 || who == address(0), "RwaOutputConduit3/not-bud");
         to = who;
         emit Pick(who);
@@ -279,7 +279,7 @@ contract RwaOutputConduit3 {
      * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
      */
     function push() external isMate {
-        _doPush(dai.balanceOf(address(this)), 0);
+        _doPush(dai.balanceOf(address(this)));
     }
 
     /**
@@ -288,7 +288,7 @@ contract RwaOutputConduit3 {
      * @param wad DAI amount.
      */
     function push(uint256 wad) external isMate {
-        _doPush(wad, gem.balanceOf(address(this)));
+        _doPush(wad);
     }
 
     /**
@@ -309,16 +309,26 @@ contract RwaOutputConduit3 {
     }
 
     /**
+     * @notice Flushes out any GEM balance to `usr` address.
+     * @param usr Destination address
+     * @dev Can be called only by admin.
+     */
+    function quitGem(address usr) external auth {
+        gem.transfer(usr, gem.balanceOf(address(this)));
+    }
+
+    /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
      * @param wad DAI amount.
-     * @param prevGemBalance Previous GEM balance used to track exact amount of GEM swapped for DAI in the PSM. Set to `0` if you want to get all outstanding GEM balance.
      */
-    function _doPush(uint256 wad, uint256 prevGemBalance) internal {
+    function _doPush(uint256 wad) internal {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmount = wad / toGemConversionFactor;
+        uint256 gemAmount = getGemBuyAmount(wad, psm.tout());
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
+
+        uint256 prevGemBalance = gem.balanceOf(address(this));
 
         psm.buyGem(address(this), gemAmount);
 
@@ -337,6 +347,7 @@ contract RwaOutputConduit3 {
      * @param wad The DAI amount.
      */
     function _doQuit(uint256 wad) internal {
+        require(quitTo != address(0), "RwaOutputConduit3/invalid-quit-to-address");
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);
     }
@@ -345,7 +356,17 @@ contract RwaOutputConduit3 {
                     Math
     //////////////////////////////////*/
 
+    uint256 constant WAD = 10**18;
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
+    }
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x);
+    }
+
+    function getGemBuyAmount(uint256 wad, uint256 tout) internal view returns (uint256) {
+        return (wad * WAD) / (WAD + tout) / toGemConversionFactor;
     }
 }

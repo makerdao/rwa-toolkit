@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -117,7 +118,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = new TestUrn();
-        outputConduit = new RwaOutputConduit3(address(psmA), address(testUrn));
+        outputConduit = new RwaOutputConduit3(address(psmA));
+        outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
         outputConduit.kiss(me);
         outputConduit.pick(me);
@@ -130,7 +132,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA), address(testUrn));
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
 
         assertEq(c.wards(address(this)), 1);
     }
@@ -145,7 +147,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         DssPsm psm = new DssPsm(address(testJoin), address(daiJoin), address(vow));
 
         vm.expectRevert("RwaOutputConduit3/invalid-gem-decimals");
-        new RwaOutputConduit3(address(psm), address(testUrn));
+        new RwaOutputConduit3(address(psm));
     }
 
     function testRelyDeny() public {
@@ -247,6 +249,9 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
         outputConduit.file(bytes32("quitTo"), address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        outputConduit.quitGem(address(0));
     }
 
     function testRevertOnNotMateMethods() public {
@@ -327,8 +332,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), 600 * USDX_BASE_UNIT);
-        assertEq(usdx.balanceOf(address(outputConduit)), 0);
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -346,10 +351,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_DIF_DECIMALS);
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
-        assertEq(
-            dai.balanceOf(address(outputConduit)),
-            cDaiBalance - (wad / USDX_DAI_DIF_DECIMALS) * USDX_DAI_DIF_DECIMALS
-        );
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -424,11 +426,35 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(address(outputConduit)), cBalance - wad);
     }
 
+    function testRevertOnQuitWhenQuitToAddressNotSet() public {
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
+        c.mate(me);
+
+        assertEq(c.quitTo(), address(0));
+
+        vm.expectRevert("RwaOutputConduit3/invalid-quit-to-address");
+        c.quit();
+    }
+
     function testRevertOnQuitAmountMoreThenBalance() public {
         assertEq(dai.balanceOf(address(outputConduit)), 0);
 
         vm.expectRevert("Dai/insufficient-balance");
         outputConduit.quit(1);
+    }
+
+    function testQuitGem() public {
+        uint256 USDX_AMOUNT = 100 * USDX_BASE_UNIT;
+
+        usdx.mint(USDX_AMOUNT);
+        usdx.transfer(address(outputConduit), USDX_AMOUNT);
+        uint256 usdxBalance = usdx.balanceOf(me);
+
+        assertEq(usdx.balanceOf(address(outputConduit)), USDX_AMOUNT);
+
+        outputConduit.quitGem(me);
+        assertEq(usdx.balanceOf(me), usdxBalance + USDX_AMOUNT);
+        assertEq(usdx.balanceOf(address(outputConduit)), 0);
     }
 }
 

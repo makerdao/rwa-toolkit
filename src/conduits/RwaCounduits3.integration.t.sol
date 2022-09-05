@@ -70,20 +70,6 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         return add(gemAmt18, fee);
     }
 
-    function getGemBuyAmount(uint256 wadAmt) internal view returns (uint256) {
-        return (wadAmt * WAD) / (WAD + PSM_TOUT) / GEM_DAI_DIFF_DECIMALS;
-    }
-
-    function getGemSellAmount(uint256 wadAmt) internal view returns (uint256) {
-        return (wadAmt * WAD) / (WAD - PSM_TIN) / GEM_DAI_DIFF_DECIMALS;
-    }
-
-    function getDaiOutAmount(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
-        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
-        return sub(gemAmt18, fee);
-    }
-
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
         gem = GemAbstract(AuthGemJoinAbstract(address(DssPsm(psm).gemJoin())).gem());
@@ -127,7 +113,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         inputConduit.push();
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
-        assertEq(dai.balanceOf(testUrn), getDaiOutAmount(gemAmount));
+        assertEq(dai.balanceOf(testUrn), inputConduit.gemToDai(gemAmount));
     }
 
     function testInputConduitPushAmountFuzz(uint256 amt) public {
@@ -143,7 +129,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         inputConduit.push(amt);
 
         assertEq(gem.balanceOf(address(inputConduit)), gemCBalanceBefore - amt);
-        assertEq(dai.balanceOf(testUrn), urnGemBalanceBefore + getDaiOutAmount(amt));
+        assertEq(dai.balanceOf(testUrn), urnGemBalanceBefore + inputConduit.gemToDai(amt));
     }
 
     function testRevertInputConduitOnSwapAboveLine() public {
@@ -177,7 +163,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         outputConduit.push();
 
-        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + getGemBuyAmount(daiAmount));
+        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.daiToGem(daiAmount));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
@@ -194,11 +180,11 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         outputConduit.push(wadAmt);
 
-        assertEq(gem.balanceOf(me), gemBalance + getGemBuyAmount(wadAmt));
+        assertEq(gem.balanceOf(me), gemBalance + outputConduit.daiToGem(wadAmt));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
-            cDaiBalance - getDaiInAmount(getGemBuyAmount(wadAmt)),
+            cDaiBalance - getDaiInAmount(outputConduit.daiToGem(wadAmt)),
             GEM_DAI_DIFF_DECIMALS
         );
         assertEq(outputConduit.to(), address(0));

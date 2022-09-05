@@ -318,6 +318,14 @@ contract RwaOutputConduit3 {
     }
 
     /**
+     * @notice Calculate amount of GEM received for swapping DAI through PSM.
+     * @param wad DAI amount.
+     */
+    function daiToGem(uint256 wad) external view returns (uint256) {
+        return (wad * WAD) / (WAD + psm.tout()) / toGemConversionFactor;
+    }
+
+    /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
      * @param wad DAI amount.
      */
@@ -325,7 +333,7 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmount = getGemBuyAmount(wad, psm.tout());
+        uint256 gemAmount = this.daiToGem(wad);
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
         uint256 prevGemBalance = gem.balanceOf(address(this));
@@ -364,9 +372,5 @@ contract RwaOutputConduit3 {
 
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
-    }
-
-    function getGemBuyAmount(uint256 wad, uint256 tout) internal view returns (uint256) {
-        return (wad * WAD) / (WAD + tout) / toGemConversionFactor;
     }
 }

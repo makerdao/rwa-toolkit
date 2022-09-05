@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -15,7 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pragma solidity 0.6.12;
 
-import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
+import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
+import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
 
@@ -36,14 +38,14 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  */
 contract RwaInputConduit3 {
     /// @notice PSM GEM token contract address
-    DSTokenAbstract public immutable gem;
+    GemAbstract public immutable gem;
     /// @notice PSM contract address
     PsmAbstract public immutable psm;
 
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
-    DSTokenAbstract private __unused_gov;
+    address private __unused_gov;
     /// @notice Dai token contract address
-    DSTokenAbstract public dai;
+    DaiAbstract public dai;
     /// @notice RWA urn contract address
     address public to;
 
@@ -108,19 +110,15 @@ contract RwaInputConduit3 {
      * @notice Define addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
      * @param _to RwaUrn contract address.
-     * @param _quitTo Address to where outstanding GEM balance will go after `quit`
      */
-    constructor(
-        address _psm,
-        address _to,
-        address _quitTo
-    ) public {
-        DSTokenAbstract _gem = DSTokenAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
+    constructor(address _psm, address _to) public {
+        require(_to != address(0), "RwaInputConduit3/invalid-to-address");
+
+        GemAbstract _gem = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
         psm = PsmAbstract(_psm);
-        dai = DSTokenAbstract(PsmAbstract(_psm).dai());
+        dai = DaiAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         to = _to;
-        quitTo = _quitTo;
 
         // Give unlimited approve to PSM gemjoin
         _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
@@ -201,7 +199,7 @@ contract RwaInputConduit3 {
      * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external isMate {
-        _doPush(gem.balanceOf(address(this)), 0);
+        _doPush(gem.balanceOf(address(this)));
     }
 
     /**
@@ -210,7 +208,7 @@ contract RwaInputConduit3 {
      * @param amt Gem amount.
      */
     function push(uint256 amt) external isMate {
-        _doPush(amt, dai.balanceOf(address(this)));
+        _doPush(amt);
     }
 
     /**
@@ -231,11 +229,21 @@ contract RwaInputConduit3 {
     }
 
     /**
+     * @notice Flushes out all outstanding DAI balance to `usr` address.
+     * @dev Can only be called by the admin
+     * @param usr Destination address.
+     */
+    function quitDai(address usr) external auth {
+        dai.transfer(usr, dai.balanceOf(address(this)));
+    }
+
+    /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
      * @param amt GEM amount.
-     * @param prevDaiBalance Previous DAI balance used to track exact amount of GEM swapped for DAI in the PSM. Set to `0` if you want to get all outstanding DAI balance.
      */
-    function _doPush(uint256 amt, uint256 prevDaiBalance) internal {
+    function _doPush(uint256 amt) internal {
+        uint256 prevDaiBalance = dai.balanceOf(address(this));
+
         psm.sellGem(address(this), amt);
 
         uint256 daiBalance = dai.balanceOf(address(this));
@@ -250,6 +258,7 @@ contract RwaInputConduit3 {
      * @param amt GEM amount.
      */
     function _doQuit(uint256 amt) internal {
+        require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
     }

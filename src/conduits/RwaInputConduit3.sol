@@ -238,6 +238,17 @@ contract RwaInputConduit3 {
     }
 
     /**
+     * @notice Calculate amount of DAI received for swapping GEM through PSM.
+     * @param gemAmt GEM amount.
+     */
+    function gemToDai(uint256 gemAmt) external view returns (uint256) {
+        uint256 to18ConvertionFactor = 10**sub(dai.decimals(), gem.decimals());
+        uint256 gemAmt18 = mul(gemAmt, to18ConvertionFactor);
+        uint256 fee = mul(gemAmt18, psm.tin()) / WAD;
+        return sub(gemAmt18, fee);
+    }
+
+    /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
      * @param amt GEM amount.
      */
@@ -267,7 +278,13 @@ contract RwaInputConduit3 {
                     Math
     //////////////////////////////////*/
 
+    uint256 constant WAD = 10**18;
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
+    }
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x);
     }
 }

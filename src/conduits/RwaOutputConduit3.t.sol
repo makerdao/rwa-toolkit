@@ -287,7 +287,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -309,7 +309,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push(500 ether);
 
-        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
         assertEq(outputConduit.to(), address(0));
     }
@@ -332,7 +332,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
         assertEq(outputConduit.to(), address(0));
     }
@@ -349,7 +349,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), wad / USDX_DAI_DIF_DECIMALS);
         outputConduit.push(wad);
 
-        assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_DIF_DECIMALS);
+        assertEq(usdx.balanceOf(me), usdxBalance + outputConduit.daiToGem(wad));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));

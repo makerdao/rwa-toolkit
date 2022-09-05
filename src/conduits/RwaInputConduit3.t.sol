@@ -260,7 +260,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(testUrn.balance(address(dai)), inputConduit.gemToDai(500 * USDX_BASE_UNIT));
     }
 
     function testPushAmountWhenHaveSomeDaiBalanceGetExactAmount() public {
@@ -284,7 +284,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(testUrn.balance(address(dai)), inputConduit.gemToDai(500 * USDX_BASE_UNIT));
         assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
     }
 
@@ -309,7 +309,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), 500 ether);
+        assertEq(testUrn.balance(address(dai)), inputConduit.gemToDai(500 * USDX_BASE_UNIT));
         assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
     }
 
@@ -328,7 +328,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.push(amt);
 
         assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalanceBefore - amt);
-        assertEq(testUrn.balance(address(dai)), urnUsdxBalanceBefore + amt * USDX_DAI_DIF_DECIMALS);
+        assertEq(testUrn.balance(address(dai)), urnUsdxBalanceBefore + inputConduit.gemToDai(amt));
     }
 
     function testRevertOnPushAmountMoreThenGemBalance() public {

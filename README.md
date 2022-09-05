@@ -14,6 +14,8 @@
 - `RwaToken`: represents the RWA collateral in the system.
 - `RwaTokenFactory`: factory of `RwaToken`s.
 - `RwaJar`: facilitates paying stability fess directly into the DSS surplus buffer.
+- `RwaCageSettlement`: RWA settlement facility to allow DAI holders to redeem RWA tokens if MakerDAO Governance ever issues an Emergency Shutdown.
+- `RwaCageSettlementFactory`: factory of `RwaCageSettlement`.
 
 ## Spells
 

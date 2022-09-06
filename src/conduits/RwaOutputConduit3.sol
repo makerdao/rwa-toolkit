@@ -44,7 +44,7 @@ contract RwaOutputConduit3 {
     /// @notice PSM contract address.
     PsmAbstract public immutable psm;
     /// @dev DAI/GEM decimal difference.
-    uint256 private immutable toGemConversionFactor;
+    uint256 private immutable to18ConvertionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
@@ -143,7 +143,7 @@ contract RwaOutputConduit3 {
         uint256 gemDecimals = _gem.decimals();
         uint256 daiDecimals = dai.decimals();
         require(gemDecimals <= daiDecimals, "RwaOutputConduit3/invalid-gem-decimals");
-        toGemConversionFactor = 10**(daiDecimals - gemDecimals);
+        to18ConvertionFactor = 10**(daiDecimals - gemDecimals);
 
         // Give unlimited approve to PSM
         dai.approve(_psm, type(uint256).max);
@@ -318,6 +318,14 @@ contract RwaOutputConduit3 {
     }
 
     /**
+     * @notice Calculate amount of GEM received for swapping DAI through PSM.
+     * @param wad DAI amount.
+     */
+    function daiToGem(uint256 wad) public view returns (uint256) {
+        return mul(wad, WAD) / add(WAD, psm.tout()) / to18ConvertionFactor;
+    }
+
+    /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
      * @param wad DAI amount.
      */
@@ -325,7 +333,7 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmount = getGemBuyAmount(wad, psm.tout());
+        uint256 gemAmount = daiToGem(wad);
         require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
         uint256 prevGemBalance = gem.balanceOf(address(this));
@@ -356,17 +364,17 @@ contract RwaOutputConduit3 {
                     Math
     //////////////////////////////////*/
 
-    uint256 constant WAD = 10**18;
+    uint256 internal constant WAD = 10**18;
+
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "Math/add-overflow");
+    }
 
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
     }
 
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-
-    function getGemBuyAmount(uint256 wad, uint256 tout) internal view returns (uint256) {
-        return (wad * WAD) / (WAD + tout) / toGemConversionFactor;
+        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

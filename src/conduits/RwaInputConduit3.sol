@@ -41,6 +41,8 @@ contract RwaInputConduit3 {
     GemAbstract public immutable gem;
     /// @notice PSM contract address
     PsmAbstract public immutable psm;
+    /// @dev DAI/GEM decimal difference.
+    uint256 private immutable to18ConvertionFactor;
 
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
     address private __unused_gov;
@@ -119,6 +121,11 @@ contract RwaInputConduit3 {
         dai = DaiAbstract(PsmAbstract(_psm).dai());
         gem = _gem;
         to = _to;
+
+        uint256 gemDecimals = _gem.decimals();
+        uint256 daiDecimals = dai.decimals();
+        require(gemDecimals <= daiDecimals, "RwaInputConduit3/invalid-gem-decimals");
+        to18ConvertionFactor = 10**(daiDecimals - gemDecimals);
 
         // Give unlimited approve to PSM gemjoin
         _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
@@ -238,6 +245,16 @@ contract RwaInputConduit3 {
     }
 
     /**
+     * @notice Calculate amount of DAI received for swapping GEM through PSM.
+     * @param gemAmt GEM amount.
+     */
+    function gemToDai(uint256 gemAmt) external view returns (uint256) {
+        uint256 gemAmt18 = mul(gemAmt, to18ConvertionFactor);
+        uint256 fee = mul(gemAmt18, psm.tin()) / WAD;
+        return sub(gemAmt18, fee);
+    }
+
+    /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
      * @param amt GEM amount.
      */
@@ -267,7 +284,13 @@ contract RwaInputConduit3 {
                     Math
     //////////////////////////////////*/
 
+    uint256 internal constant WAD = 10**18;
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
+    }
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

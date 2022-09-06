@@ -322,7 +322,7 @@ contract RwaOutputConduit3 {
      * @param wad DAI amount.
      */
     function daiToGem(uint256 wad) public view returns (uint256) {
-        return (wad * WAD) / (WAD + psm.tout()) / to18ConvertionFactor;
+        return mul(wad, WAD) / add(WAD, psm.tout()) / to18ConvertionFactor;
     }
 
     /**
@@ -366,11 +366,15 @@ contract RwaOutputConduit3 {
 
     uint256 internal constant WAD = 10**18;
 
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "Math/add-overflow");
+    }
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
     }
 
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x);
+        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

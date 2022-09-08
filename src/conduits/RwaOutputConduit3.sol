@@ -43,7 +43,7 @@ contract RwaOutputConduit3 {
     GemAbstract public immutable gem;
     /// @notice PSM contract address.
     PsmAbstract public immutable psm;
-    /// @dev DAI/GEM decimal difference.
+    /// @dev DAI/GEM decimal difference. // TB - To be precise to18ConvertionFactor is resolution difference and not decimals difference
     uint256 private immutable to18ConvertionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
@@ -63,7 +63,7 @@ contract RwaOutputConduit3 {
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice Exit address
+    /// @notice Exit address // TB - mmm this explanation doesn't help much, can further it a bit, especially since we have quit and quitGem now, which can cause confusion
     address public quitTo;
 
     /**
@@ -142,7 +142,7 @@ contract RwaOutputConduit3 {
 
         uint256 gemDecimals = _gem.decimals();
         uint256 daiDecimals = dai.decimals();
-        require(gemDecimals <= daiDecimals, "RwaOutputConduit3/invalid-gem-decimals");
+        require(gemDecimals <= daiDecimals, "RwaOutputConduit3/invalid-gem-decimals"); // TB - I think you can use `10 ** sub(dai.decimals(), _gem.decimals())` here and remove the 3 lines above
         to18ConvertionFactor = 10**(daiDecimals - gemDecimals);
 
         // Give unlimited approve to PSM
@@ -206,7 +206,7 @@ contract RwaOutputConduit3 {
      * @notice Grants `usr` operator access to this contract.
      * @param usr The user address.
      */
-    function hope(address usr) external auth {
+    function hope(address usr) external auth { // TB - should this and `nope` be removed (as well as `can` and the events)?
         can[usr] = 1;
         emit Hope(usr);
     }
@@ -250,7 +250,7 @@ contract RwaOutputConduit3 {
      */
     function file(bytes32 what, address data) external auth {
         if (what == "quitTo") {
-            require(data != address(0), "RwaOutputConduit3/invalid-quit-to-address");
+            require(data != address(0), "RwaOutputConduit3/invalid-quit-to-address"); // TB - we usually try to avoid validations in the file function (and do the checks in the spell). Here I think it's even safer to remove as you check for address(0) in `_doQuit`
             quitTo = data;
         } else {
             revert("RwaOutputConduit3/unrecognised-param");
@@ -278,7 +278,7 @@ contract RwaOutputConduit3 {
      * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
      * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
      */
-    function push() external isMate {
+    function push() external isMate { // TB - consider adding a slippage check here and in the other push function for the output, to protect against unexpected fee changes. I.e add a parameter of minGemAmount. It's pretty common for swapping logic.
         _doPush(dai.balanceOf(address(this)));
     }
 
@@ -314,7 +314,7 @@ contract RwaOutputConduit3 {
      * @dev Can be called only by admin.
      */
     function quitGem(address usr) external auth {
-        gem.transfer(usr, gem.balanceOf(address(this)));
+        gem.transfer(usr, gem.balanceOf(address(this))); // TB - consider adding an event here as well
     }
 
     /**
@@ -341,10 +341,10 @@ contract RwaOutputConduit3 {
         psm.buyGem(address(this), gemAmount);
 
         uint256 gemBalance = gem.balanceOf(address(this));
-        uint256 gemPushAmt = sub(gemBalance, prevGemBalance);
-        address _to = to;
+        uint256 gemPushAmt = sub(gemBalance, prevGemBalance); // TB - Consider adding a require that the balance diff is gemAmount and just using that instead of gemPushAmt. Otherwise it's weird to old both variables. Also, it's better gas-wise to use gem.balanceOf inline here. Also try to refrain from using both `Amt` and `Amount` suffixes.
+        address _to = to; // TB - would be nice to have same variable namings as RwaOutputConduit2 when we can (here _to is recipient)
 
-        to = address(0);
+        to = address(0); // TB - would be nice to leave the comment for why we're doing this as in RwaOutputConduit2
         gem.transfer(_to, gemPushAmt);
 
         emit Push(_to, gemPushAmt);
@@ -354,7 +354,7 @@ contract RwaOutputConduit3 {
      * @notice Flushes out the specified amount of DAI to `quitTo` address.
      * @param wad The DAI amount.
      */
-    function _doQuit(uint256 wad) internal {
+    function _doQuit(uint256 wad) internal { // TB - as discussed I think the pattern of having internal functions right after their wrappers is nicer - https://github.com/makerdao/dss-vest/blob/master/src/DssVest.sol#L232
         require(quitTo != address(0), "RwaOutputConduit3/invalid-quit-to-address");
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);
@@ -364,7 +364,7 @@ contract RwaOutputConduit3 {
                     Math
     //////////////////////////////////*/
 
-    uint256 internal constant WAD = 10**18;
+    uint256 internal constant WAD = 10**18; // TB - as discussed maker's convention is to put the MATH part in the beginning
 
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "Math/add-overflow");

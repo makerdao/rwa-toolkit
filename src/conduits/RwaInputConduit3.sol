@@ -31,7 +31,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
- *  - THe `push()` method with `amount` argument swaps specified amount of GEM to DAI using PSM
+ *  - THe `push()` method with `amount` argument swaps specified amount of GEM to DAI using PSM // TB - `amount`-> `amt`, also below
  *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
  *  - The `quit` method with `amount` argument allows moving specified amount of GEM balance to `quitTo`.
  *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
@@ -189,7 +189,7 @@ contract RwaInputConduit3 {
             quitTo = data;
         } else if (what == "to") {
             require(data != address(0), "RwaInputConduit3/invalid-to-address");
-            to = data;
+            to = data; // TB - why is `to` fileable as opposed to RwaInputConduit2?
         } else {
             revert("RwaInputConduit3/unrecognised-param");
         }
@@ -241,14 +241,14 @@ contract RwaInputConduit3 {
      * @param usr Destination address.
      */
     function quitDai(address usr) external auth {
-        dai.transfer(usr, dai.balanceOf(address(this)));
+        dai.transfer(usr, dai.balanceOf(address(this))); // TB - consider adding an event
     }
 
     /**
      * @notice Calculate amount of DAI received for swapping GEM through PSM.
      * @param gemAmt GEM amount.
      */
-    function gemToDai(uint256 gemAmt) external view returns (uint256) {
+    function gemToDai(uint256 gemAmt) external view returns (uint256) { // TB - is this function needed? I don't think it means much as the psm fees are treated as part of the payback, so even if the resulting dai is smaller than the USDC amount the operator shouldn't care.
         uint256 gemAmt18 = mul(gemAmt, to18ConvertionFactor);
         uint256 fee = mul(gemAmt18, psm.tin()) / WAD;
         return sub(gemAmt18, fee);
@@ -264,7 +264,7 @@ contract RwaInputConduit3 {
         psm.sellGem(address(this), amt);
 
         uint256 daiBalance = dai.balanceOf(address(this));
-        uint256 daiPushAmt = sub(daiBalance, prevDaiBalance);
+        uint256 daiPushAmt = sub(daiBalance, prevDaiBalance); // TB - `amt` is used for gems everywhere, consider dropping it as a suffix or with `Wad`. Also can be used inline for gas optimisation
         dai.transfer(to, daiPushAmt);
 
         emit Push(to, daiPushAmt);

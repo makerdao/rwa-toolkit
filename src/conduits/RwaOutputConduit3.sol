@@ -43,15 +43,15 @@ contract RwaOutputConduit3 {
     GemAbstract public immutable gem;
     /// @notice PSM contract address.
     PsmAbstract public immutable psm;
-    /// @dev DAI/GEM decimal difference.
+    /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConvertionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
-    /// @notice Addresses with operator access on this contract. `can[usr]`
+    /// @dev Addresses with operator access on this contract. `can[usr]`
     mapping(address => uint256) public can;
 
-    /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
+    /// @dev Not used
     address private __unused_gov;
     /// @notice Dai token contract address.
     DaiAbstract public dai;
@@ -63,7 +63,7 @@ contract RwaOutputConduit3 {
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice Exit address
+    /// @notice Address to where DAI goes after calling `quit`
     address public quitTo;
 
     /**
@@ -77,16 +77,6 @@ contract RwaOutputConduit3 {
      */
     event Deny(address indexed usr);
     /**
-     * @notice `usr` was granted push access.
-     * @param usr The user address.
-     */
-    event Mate(address indexed usr);
-    /**
-     * @notice `usr` push access was revoked.
-     * @param usr The user address.
-     */
-    event Hate(address indexed usr);
-    /**
      * @notice `usr` was granted operator access.
      * @param usr The user address.
      */
@@ -96,6 +86,16 @@ contract RwaOutputConduit3 {
      * @param usr The user address.
      */
     event Nope(address indexed usr);
+    /**
+     * @notice `usr` was granted push access.
+     * @param usr The user address.
+     */
+    event Mate(address indexed usr);
+    /**
+     * @notice `usr` push access was revoked.
+     * @param usr The user address.
+     */
+    event Hate(address indexed usr);
     /**
      * @notice `who` address whitelisted for pick.
      * @param who The user address.
@@ -124,11 +124,17 @@ contract RwaOutputConduit3 {
      */
     event File(bytes32 indexed what, address data);
     /**
-     * @notice The conduit outstanding gem balance was flushed out to `quitTo` address.
+     * @notice The conduit outstanding DAI balance was flushed out to `quitTo` address.
      * @param quitTo The quitTo address.
-     * @param wad The amount flushed out.
+     * @param wad The amount of DAI flushed out.
      */
     event Quit(address indexed quitTo, uint256 wad);
+    /**
+     * @notice The conduit outstanding gem balance was flushed out to destination address.
+     * @param usr The destination address.
+     * @param amt The amount of Gem flushed out.
+     */
+    event Yank(address indexed usr, uint256 amt);
 
     /**
      * @notice Defines PSM and quitTo addresses and gives `msg.sender` admin access.
@@ -139,11 +145,7 @@ contract RwaOutputConduit3 {
         psm = PsmAbstract(_psm);
         gem = _gem;
         dai = DaiAbstract(PsmAbstract(_psm).dai());
-
-        uint256 gemDecimals = _gem.decimals();
-        uint256 daiDecimals = dai.decimals();
-        require(gemDecimals <= daiDecimals, "RwaOutputConduit3/invalid-gem-decimals");
-        to18ConvertionFactor = 10**(daiDecimals - gemDecimals);
+        to18ConvertionFactor = 10**sub(18, _gem.decimals());
 
         // Give unlimited approve to PSM
         dai.approve(_psm, type(uint256).max);
@@ -185,24 +187,6 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Grants `usr` push access to this contract.
-     * @param usr The user address.
-     */
-    function mate(address usr) external auth {
-        may[usr] = 1;
-        emit Mate(usr);
-    }
-
-    /**
-     * @notice Revokes `usr` push access from this contract.
-     * @param usr The user address.
-     */
-    function hate(address usr) external auth {
-        may[usr] = 0;
-        emit Hate(usr);
-    }
-
-    /**
      * @notice Grants `usr` operator access to this contract.
      * @param usr The user address.
      */
@@ -218,6 +202,24 @@ contract RwaOutputConduit3 {
     function nope(address usr) external auth {
         can[usr] = 0;
         emit Nope(usr);
+    }
+
+    /**
+     * @notice Grants `usr` push access to this contract.
+     * @param usr The user address.
+     */
+    function mate(address usr) external auth {
+        may[usr] = 1;
+        emit Mate(usr);
+    }
+
+    /**
+     * @notice Revokes `usr` push access from this contract.
+     * @param usr The user address.
+     */
+    function hate(address usr) external auth {
+        may[usr] = 0;
+        emit Hate(usr);
     }
 
     /**
@@ -250,7 +252,6 @@ contract RwaOutputConduit3 {
      */
     function file(bytes32 what, address data) external auth {
         if (what == "quitTo") {
-            require(data != address(0), "RwaOutputConduit3/invalid-quit-to-address");
             quitTo = data;
         } else {
             revert("RwaOutputConduit3/unrecognised-param");
@@ -264,7 +265,8 @@ contract RwaOutputConduit3 {
      * @param who Recipient address.
      * @dev `who` address should have been whitelisted using `kiss`.
      */
-    function pick(address who) external isMate {
+    function pick(address who) external {
+        require(can[msg.sender] == 1, "RwaOutputConduit3/not-operator");
         require(bud[who] == 1 || who == address(0), "RwaOutputConduit3/not-bud");
         to = who;
         emit Pick(who);
@@ -313,15 +315,18 @@ contract RwaOutputConduit3 {
      * @param usr Destination address
      * @dev Can be called only by admin.
      */
-    function quitGem(address usr) external auth {
-        gem.transfer(usr, gem.balanceOf(address(this)));
+    function yank(address usr) external auth {
+        uint256 amt = gem.balanceOf(address(this));
+        gem.transfer(usr, amt);
+        emit Yank(usr, amt);
     }
 
     /**
-     * @notice Calculate amount of GEM received for swapping DAI through PSM.
+     * @notice Calculate expected amount of GEM received for swapping `wad` amount of DAI.
      * @param wad DAI amount.
+     * @return gemAmt Amount of GEM expected.
      */
-    function daiToGem(uint256 wad) public view returns (uint256) {
+    function expectedGemAmt(uint256 wad) public view returns (uint256) {
         return mul(wad, WAD) / add(WAD, psm.tout()) / to18ConvertionFactor;
     }
 
@@ -333,21 +338,17 @@ contract RwaOutputConduit3 {
         require(to != address(0), "RwaOutputConduit3/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmount = daiToGem(wad);
-        require(gemAmount > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
+        uint256 gemAmt = expectedGemAmt(wad);
+        require(gemAmt > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
-        uint256 prevGemBalance = gem.balanceOf(address(this));
+        psm.buyGem(address(this), gemAmt);
 
-        psm.buyGem(address(this), gemAmount);
-
-        uint256 gemBalance = gem.balanceOf(address(this));
-        uint256 gemPushAmt = sub(gemBalance, prevGemBalance);
-        address _to = to;
-
+        address recipient = to;
         to = address(0);
-        gem.transfer(_to, gemPushAmt);
 
-        emit Push(_to, gemPushAmt);
+        gem.transfer(recipient, gemAmt);
+
+        emit Push(recipient, gemAmt);
     }
 
     /**

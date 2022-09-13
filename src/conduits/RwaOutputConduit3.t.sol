@@ -59,6 +59,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Hope(address indexed usr);
+    event Nope(address indexed usr);
     event Mate(address indexed usr);
     event Hate(address indexed usr);
     event Kiss(address indexed who);
@@ -66,6 +68,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
+    event Yank(address indexed usr, uint256 amt);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10**9;
@@ -121,6 +124,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit = new RwaOutputConduit3(address(psmA));
         outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
+        outputConduit.hope(me);
         outputConduit.kiss(me);
         outputConduit.pick(me);
 
@@ -146,7 +150,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
         DssPsm psm = new DssPsm(address(testJoin), address(daiJoin), address(vow));
 
-        vm.expectRevert("RwaOutputConduit3/invalid-gem-decimals");
+        vm.expectRevert("Math/sub-overflow");
         new RwaOutputConduit3(address(psm));
     }
 
@@ -186,6 +190,24 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.may(address(0)), 0);
     }
 
+    function testHopeNope() public {
+        assertEq(outputConduit.can(address(0)), 0);
+
+        vm.expectEmit(true, false, false, false);
+        emit Hope(address(0));
+
+        outputConduit.hope(address(0));
+
+        assertEq(outputConduit.can(address(0)), 1);
+
+        vm.expectEmit(true, false, false, false);
+        emit Nope(address(0));
+
+        outputConduit.nope(address(0));
+
+        assertEq(outputConduit.can(address(0)), 0);
+    }
+
     function testKissDiss() public {
         assertEq(outputConduit.bud(address(0)), 0);
 
@@ -221,11 +243,6 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("random"), address(0));
     }
 
-    function testRevertOnFileQuitToZeroAddress() public {
-        vm.expectRevert("RwaOutputConduit3/invalid-quit-to-address");
-        outputConduit.file(bytes32("quitTo"), address(0));
-    }
-
     function testRevertOnUnauthorizedMethods() public {
         vm.startPrank(address(0));
 
@@ -234,6 +251,12 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
         outputConduit.deny(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        outputConduit.hope(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        outputConduit.nope(address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
         outputConduit.hate(address(0));
@@ -251,14 +274,11 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("quitTo"), address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
-        outputConduit.quitGem(address(0));
+        outputConduit.yank(address(0));
     }
 
     function testRevertOnNotMateMethods() public {
         vm.startPrank(address(0));
-
-        vm.expectRevert("RwaOutputConduit3/not-mate");
-        outputConduit.pick(address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-mate");
         outputConduit.push();
@@ -267,7 +287,14 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.quit();
     }
 
-    function testRevertOnPickAddressNotWHitelisted() public {
+    function testRevertOnNotOperatorMethods() public {
+        vm.startPrank(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-operator");
+        outputConduit.pick(address(0));
+    }
+
+    function testRevertOnPickAddressNotWhitelisted() public {
         vm.expectRevert("RwaOutputConduit3/not-bud");
         outputConduit.pick(vm.addr(1));
     }
@@ -287,7 +314,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
+        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -309,7 +336,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push(500 ether);
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
+        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
         assertEq(outputConduit.to(), address(0));
     }
@@ -332,7 +359,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.daiToGem(500 ether));
+        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
         assertEq(outputConduit.to(), address(0));
     }
@@ -349,7 +376,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), wad / USDX_DAI_DIF_DECIMALS);
         outputConduit.push(wad);
 
-        assertEq(usdx.balanceOf(me), usdxBalance + outputConduit.daiToGem(wad));
+        assertEq(usdx.balanceOf(me), usdxBalance + outputConduit.expectedGemAmt(wad));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
@@ -443,7 +470,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.quit(1);
     }
 
-    function testQuitGem() public {
+    function testYank() public {
         uint256 USDX_AMOUNT = 100 * USDX_BASE_UNIT;
 
         usdx.mint(USDX_AMOUNT);
@@ -452,7 +479,10 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(outputConduit)), USDX_AMOUNT);
 
-        outputConduit.quitGem(me);
+        vm.expectEmit(true, true, false, false);
+        emit Yank(address(me), USDX_AMOUNT);
+
+        outputConduit.yank(me);
         assertEq(usdx.balanceOf(me), usdxBalance + USDX_AMOUNT);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
     }

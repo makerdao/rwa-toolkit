@@ -70,6 +70,12 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         return add(gemAmt18, fee);
     }
 
+    function gemToDai(uint256 gemAmt) internal view returns (uint256) {
+        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
+        return sub(gemAmt18, fee);
+    }
+
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
         gem = GemAbstract(AuthGemJoinAbstract(address(DssPsm(psm).gemJoin())).gem());
@@ -91,6 +97,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         inputConduit.mate(me);
         outputConduit.mate(me);
+        outputConduit.hope(me);
 
         outputConduit.kiss(me);
         outputConduit.pick(me);
@@ -113,7 +120,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         inputConduit.push();
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
-        assertEq(dai.balanceOf(testUrn), inputConduit.gemToDai(gemAmount));
+        assertEq(dai.balanceOf(testUrn), gemToDai(gemAmount));
     }
 
     function testInputConduitPushAmountFuzz(uint256 amt) public {
@@ -129,7 +136,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         inputConduit.push(amt);
 
         assertEq(gem.balanceOf(address(inputConduit)), gemCBalanceBefore - amt);
-        assertEq(dai.balanceOf(testUrn), urnGemBalanceBefore + inputConduit.gemToDai(amt));
+        assertEq(dai.balanceOf(testUrn), urnGemBalanceBefore + gemToDai(amt));
     }
 
     function testRevertInputConduitOnSwapAboveLine() public {
@@ -163,7 +170,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         outputConduit.push();
 
-        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.daiToGem(daiAmount));
+        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(daiAmount));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
@@ -180,11 +187,11 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         outputConduit.push(wadAmt);
 
-        assertEq(gem.balanceOf(me), gemBalance + outputConduit.daiToGem(wadAmt));
+        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(wadAmt));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
-            cDaiBalance - getDaiInAmount(outputConduit.daiToGem(wadAmt)),
+            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(wadAmt)),
             GEM_DAI_DIFF_DECIMALS
         );
         assertEq(outputConduit.to(), address(0));

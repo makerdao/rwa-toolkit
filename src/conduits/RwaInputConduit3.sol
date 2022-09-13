@@ -31,7 +31,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
  *  - The `push()` method swaps GEM to DAI using PSM
- *  - THe `push()` method with `amount` argument swaps specified amount of GEM to DAI using PSM
+ *  - THe `push()` method with `amt` argument swaps specified amount of GEM to DAI using PSM
  *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
  *  - The `quit` method with `amount` argument allows moving specified amount of GEM balance to `quitTo`.
  *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
@@ -41,7 +41,7 @@ contract RwaInputConduit3 {
     GemAbstract public immutable gem;
     /// @notice PSM contract address
     PsmAbstract public immutable psm;
-    /// @dev DAI/GEM decimal difference.
+    /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConvertionFactor;
 
     /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
@@ -97,6 +97,12 @@ contract RwaInputConduit3 {
      * @param wad The amount flushed out.
      */
     event Quit(address indexed quitTo, uint256 wad);
+    /**
+     * @notice The conduit outstanding DAI balance was flushed out to destination address.
+     * @param usr The destination address.
+     * @param wad The amount of DAI flushed out.
+     */
+    event Yank(address indexed usr, uint256 wad);
 
     modifier auth() {
         require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
@@ -122,10 +128,7 @@ contract RwaInputConduit3 {
         gem = _gem;
         to = _to;
 
-        uint256 gemDecimals = _gem.decimals();
-        uint256 daiDecimals = dai.decimals();
-        require(gemDecimals <= daiDecimals, "RwaInputConduit3/invalid-gem-decimals");
-        to18ConvertionFactor = 10**(daiDecimals - gemDecimals);
+        to18ConvertionFactor = 10**sub(18, _gem.decimals());
 
         // Give unlimited approve to PSM gemjoin
         _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
@@ -185,10 +188,8 @@ contract RwaInputConduit3 {
      */
     function file(bytes32 what, address data) external auth {
         if (what == "quitTo") {
-            require(data != address(0), "RwaInputConduit3/invalid-quit-to-address");
             quitTo = data;
         } else if (what == "to") {
-            require(data != address(0), "RwaInputConduit3/invalid-to-address");
             to = data;
         } else {
             revert("RwaInputConduit3/unrecognised-param");
@@ -240,18 +241,19 @@ contract RwaInputConduit3 {
      * @dev Can only be called by the admin
      * @param usr Destination address.
      */
-    function quitDai(address usr) external auth {
-        dai.transfer(usr, dai.balanceOf(address(this)));
+    function yank(address usr) external auth {
+        uint256 wad = dai.balanceOf(address(this));
+        dai.transfer(usr, wad);
+        emit Yank(usr, wad);
     }
 
     /**
-     * @notice Calculate amount of DAI received for swapping GEM through PSM.
-     * @param gemAmt GEM amount.
+     * @notice Calculate required amount of GEM to get `wad` amount of DAI.
+     * @param wad DAI amount.
+     * @return gemAmt Amount of GEM required.
      */
-    function gemToDai(uint256 gemAmt) external view returns (uint256) {
-        uint256 gemAmt18 = mul(gemAmt, to18ConvertionFactor);
-        uint256 fee = mul(gemAmt18, psm.tin()) / WAD;
-        return sub(gemAmt18, fee);
+    function requiredGemAmt(uint256 wad) external view returns (uint256 gemAmt) {
+        return mul(wad, WAD) / sub(WAD, psm.tin()) / to18ConvertionFactor;
     }
 
     /**
@@ -263,8 +265,7 @@ contract RwaInputConduit3 {
 
         psm.sellGem(address(this), amt);
 
-        uint256 daiBalance = dai.balanceOf(address(this));
-        uint256 daiPushAmt = sub(daiBalance, prevDaiBalance);
+        uint256 daiPushAmt = sub(dai.balanceOf(address(this)), prevDaiBalance);
         dai.transfer(to, daiPushAmt);
 
         emit Push(to, daiPushAmt);

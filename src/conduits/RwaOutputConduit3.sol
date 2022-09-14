@@ -341,12 +341,10 @@ contract RwaOutputConduit3 {
         uint256 gemAmt = expectedGemAmt(wad);
         require(gemAmt > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
 
-        psm.buyGem(address(this), gemAmt);
-
         address recipient = to;
         to = address(0);
 
-        gem.transfer(recipient, gemAmt);
+        psm.buyGem(recipient, gemAmt);
 
         emit Push(recipient, gemAmt);
     }

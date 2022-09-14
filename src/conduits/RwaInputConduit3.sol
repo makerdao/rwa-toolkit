@@ -261,6 +261,7 @@ contract RwaInputConduit3 {
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
+        require(to != address(0), "RwaInputConduit3/invalid-to-address");
         uint256 prevDaiBalance = dai.balanceOf(address(this));
 
         psm.sellGem(address(this), amt);

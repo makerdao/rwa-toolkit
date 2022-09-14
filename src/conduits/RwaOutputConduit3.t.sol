@@ -154,6 +154,15 @@ contract RwaOutputConduit3Test is Test, DSMath {
         new RwaOutputConduit3(address(psm));
     }
 
+    function testRevertOnPushWhenToAddressNotPicked() public {
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
+        c.mate(me);
+        c.hope(me);
+
+        vm.expectRevert("RwaOutputConduit3/to-not-picked");
+        c.push();
+    }
+
     function testRelyDeny() public {
         assertEq(outputConduit.wards(address(0)), 0);
 

@@ -86,7 +86,6 @@ contract RwaInputConduit3Test is Test, DSMath {
         me = address(this);
 
         vat = new Vat();
-        vat = vat;
 
         spot = new Spotter(address(vat));
         vat.rely(address(spot));
@@ -406,6 +405,17 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         vm.expectRevert("ds-token-insufficient-balance");
         inputConduit.quit(1);
+    }
+
+    function testRevertOnPushWhenToAddressNotSet() public {
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
+        c.mate(me);
+        c.file("to", address(0));
+
+        assertEq(c.to(), address(0));
+
+        vm.expectRevert("RwaInputConduit3/invalid-to-address");
+        c.push();
     }
 
     function testRevertOnQuitWhenQuitToAddressNotSet() public {

@@ -43,7 +43,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
     uint256 GEM_DECIMALS;
     uint256 GEM_DAI_DIFF_DECIMALS;
-    uint256 ART_LEFT;
+    uint256 MAX_GEM_SELL;
     uint256 URN_INK;
 
     uint256 PSM_TIN;
@@ -83,7 +83,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         (uint256 art, , , uint256 line, ) = vat.ilks(ILK);
         GEM_DECIMALS = 10**uint256(gem.decimals());
         GEM_DAI_DIFF_DECIMALS = 10**uint256(dai.decimals() - gem.decimals());
-        ART_LEFT = (wad(line) - art) / GEM_DAI_DIFF_DECIMALS;
+        MAX_GEM_SELL = (wad(line) - art) / GEM_DAI_DIFF_DECIMALS;
         (uint256 ink, ) = vat.urns(ILK, psm);
         URN_INK = ink;
 
@@ -108,7 +108,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     //////////////////////////////////*/
 
     function testInputConduitPush() public {
-        uint256 gemAmount = ART_LEFT;
+        uint256 gemAmount = MAX_GEM_SELL;
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
 
@@ -123,24 +123,26 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         assertEq(dai.balanceOf(testUrn), gemToDai(gemAmount));
     }
 
-    function testInputConduitPushAmountFuzz(uint256 amt) public {
-        uint256 gemAmount = ART_LEFT;
+    function testInputConduitPushAmountFuzz(uint256 amt, uint256 urnBalance) public {
+        urnBalance = bound(urnBalance, 1 * WAD, 1_000_000 * WAD);
+        deal(address(dai), address(testUrn), urnBalance);
+        uint256 gemAmount = MAX_GEM_SELL;
 
         gem.transfer(address(inputConduit), gemAmount);
 
         uint256 gemCBalanceBefore = gem.balanceOf(address(inputConduit));
-        uint256 urnGemBalanceBefore = gem.balanceOf(address(testUrn));
+        uint256 urnDaiBalanceBefore = dai.balanceOf(address(testUrn));
 
         amt = bound(amt, 1 * GEM_DECIMALS, gemCBalanceBefore);
 
         inputConduit.push(amt);
 
         assertEq(gem.balanceOf(address(inputConduit)), gemCBalanceBefore - amt);
-        assertEq(dai.balanceOf(testUrn), urnGemBalanceBefore + gemToDai(amt));
+        assertEq(dai.balanceOf(testUrn), urnDaiBalanceBefore + gemToDai(amt));
     }
 
     function testRevertInputConduitOnSwapAboveLine() public {
-        uint256 gemAmount = ART_LEFT + 1; // more then ART left
+        uint256 gemAmount = MAX_GEM_SELL + 1; // more then MAX
 
         assertEq(gem.balanceOf(address(inputConduit)), 0);
 
@@ -171,7 +173,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         outputConduit.push();
 
         assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(daiAmount));
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
+        // We lose some dust because of decimals diff dai.decimals() > gem.decimals()
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
@@ -188,7 +190,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         outputConduit.push(wadAmt);
 
         assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(wadAmt));
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
+        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
             cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(wadAmt)),
@@ -208,7 +210,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         vm.expectRevert();
         // It will revert on vat.frob()
-        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink = 1000 and dink = -1100
+        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink < dink
         outputConduit.push();
 
         assertEq(dai.balanceOf(address(outputConduit)), daiAmount);
@@ -223,7 +225,7 @@ contract RwaConduits3PsmUsdcIntegrationTest is RwaConduits3TestAbstract {
 
     function setUp() public override {
         super.setUp();
-        deal(address(gem), me, 2 * ART_LEFT);
+        deal(address(gem), me, 2 * MAX_GEM_SELL);
     }
 }
 
@@ -235,7 +237,7 @@ contract RwaConduits3PsmPaxIntegrationTest is RwaConduits3TestAbstract {
 
     function setUp() public override {
         super.setUp();
-        deal(address(gem), me, 2 * ART_LEFT);
+        deal(address(gem), me, 2 * MAX_GEM_SELL);
     }
 }
 
@@ -254,12 +256,12 @@ contract RwaConduits3PsmGUSDIntegrationTest is RwaConduits3TestAbstract {
 
         vm.startPrank(impl);
 
-        store.setBalance(me, 2 * ART_LEFT);
-        store.setTotalSupply(gem.totalSupply() + 2 * ART_LEFT);
+        store.setBalance(me, 2 * MAX_GEM_SELL);
+        store.setTotalSupply(gem.totalSupply() + 2 * MAX_GEM_SELL);
 
         vm.stopPrank();
 
-        assertEq(gem.balanceOf(me), 2 * ART_LEFT);
+        assertEq(gem.balanceOf(me), 2 * MAX_GEM_SELL);
     }
 }
 
@@ -278,12 +280,12 @@ contract RwaConduits3PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits3TestAb
 
         vm.startPrank(impl);
 
-        store.setBalance(me, 2 * ART_LEFT);
-        store.setTotalSupply(gem.totalSupply() + 2 * ART_LEFT);
+        store.setBalance(me, 2 * MAX_GEM_SELL);
+        store.setTotalSupply(gem.totalSupply() + 2 * MAX_GEM_SELL);
 
         vm.stopPrank();
 
-        assertEq(gem.balanceOf(me), 2 * ART_LEFT);
+        assertEq(gem.balanceOf(me), 2 * MAX_GEM_SELL);
 
         // Adjust tin/tour for PSM
         vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
@@ -311,7 +313,7 @@ contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAb
     function setUp() public override {
         super.setUp();
 
-        deal(address(gem), me, 2 * ART_LEFT);
+        deal(address(gem), me, 2 * MAX_GEM_SELL);
 
         // Adjust tin/tour for PSM
         vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
@@ -339,7 +341,7 @@ contract RwaConduits3PsmPAXWith5PercentFeeIntegrationTest is RwaConduits3TestAbs
     function setUp() public override {
         super.setUp();
 
-        deal(address(gem), me, 2 * ART_LEFT);
+        deal(address(gem), me, 2 * MAX_GEM_SELL);
 
         // Adjust tin/tour for PSM
         vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));

@@ -49,7 +49,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     AuthGemJoin5 joinA;
     DssPsm psmA;
     RwaInputConduit3 inputConduit;
-    TestUrn testUrn;
+    address testUrn;
 
     bytes32 constant ilk = "usdx";
 
@@ -66,7 +66,7 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
-    event Yank(address indexed usr, uint256 gemAmt);
+    event Yank(address indexed token, address indexed usr, uint256 amt);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10**9;
@@ -123,10 +123,10 @@ contract RwaInputConduit3Test is Test, DSMath {
     function setUp() public {
         setUpMCDandPSM();
 
-        testUrn = new TestUrn();
+        testUrn = vm.addr(420);
         inputConduit = new RwaInputConduit3(address(psmA), address(testUrn));
-        inputConduit.file("quitTo", address(this));
         inputConduit.mate(me);
+        inputConduit.file("quitTo", address(this));
         PSM_TIN = psmA.tin();
     }
 
@@ -237,7 +237,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.file(bytes32("quitTo"), address(0));
 
         vm.expectRevert("RwaInputConduit3/not-authorized");
-        inputConduit.yank(address(0));
+        inputConduit.yank(address(0), me, 0);
     }
 
     function testRevertOnNotMateMethods() public {
@@ -260,7 +260,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
 
-        assertEq(testUrn.balance(address(dai)), 0);
+        assertEq(dai.balanceOf(testUrn), 0);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(testUrn), 500 ether);
@@ -268,7 +268,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), gemToDai(500 * USDX_BASE_UNIT));
+        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
     }
 
     function testPushAmountWhenHaveSomeDaiBalanceGetExactAmount() public {
@@ -284,7 +284,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
 
-        assertEq(testUrn.balance(address(dai)), 0);
+        assertEq(dai.balanceOf(testUrn), 0);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(testUrn), 500 ether);
@@ -292,7 +292,7 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), gemToDai(500 * USDX_BASE_UNIT));
+        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
         assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
     }
 
@@ -309,7 +309,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
 
-        assertEq(testUrn.balance(address(dai)), 0);
+        assertEq(dai.balanceOf(testUrn), 0);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(testUrn), 500 ether);
@@ -317,17 +317,20 @@ contract RwaInputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(testUrn.balance(address(dai)), gemToDai(500 * USDX_BASE_UNIT));
+        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
         assertEq(dai.balanceOf(address(inputConduit)), 100 ether);
     }
 
-    function testPushAmountFuzz(uint256 amt) public {
+    function testPushAmountFuzz(uint256 amt, uint256 wad) public {
+        wad = bound(wad, 10**18, type(uint256).max);
+        deal(address(dai), testUrn, wad);
+
         uint256 usdxBalanceBefore = usdx.balanceOf(me);
         usdx.transfer(address(inputConduit), usdxBalanceBefore);
         assertEq(usdx.balanceOf(me), 0);
 
         uint256 usdxCBalanceBefore = usdx.balanceOf(address(inputConduit));
-        uint256 urnUsdxBalanceBefore = usdx.balanceOf(address(testUrn));
+        uint256 urnDaiBalanceBefore = dai.balanceOf(address(testUrn));
 
         amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalanceBefore);
 
@@ -336,7 +339,7 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.push(amt);
 
         assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalanceBefore - amt);
-        assertEq(testUrn.balance(address(dai)), urnUsdxBalanceBefore + gemToDai(amt));
+        assertEq(dai.balanceOf(testUrn), urnDaiBalanceBefore + gemToDai(amt));
     }
 
     function testRevertOnPushAmountMoreThenGemBalance() public {
@@ -360,13 +363,24 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(inputConduit)), usdxMintedTotal);
 
-        assertEq(testUrn.balance(address(dai)), 0);
+        assertEq(dai.balanceOf(testUrn), 0);
 
         vm.expectRevert("Vat/ceiling-exceeded");
         inputConduit.push();
 
         assertEq(usdx.balanceOf(address(inputConduit)), usdxMintedTotal);
-        assertEq(testUrn.balance(address(dai)), 0);
+        assertEq(dai.balanceOf(testUrn), 0);
+    }
+
+    function testRevertOnPushWhenToAddressNotSet() public {
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
+        c.mate(me);
+        c.file("to", address(0));
+
+        assertEq(c.to(), address(0));
+
+        vm.expectRevert("RwaInputConduit3/invalid-to-address");
+        c.push();
     }
 
     function testQuit() public {
@@ -381,6 +395,16 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.quit();
 
         assertEq(usdx.balanceOf(inputConduit.quitTo()), USDX_MINT_AMOUNT);
+    }
+
+    function testRevertOnQuitWhenQuitToAddressNotSet() public {
+        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
+        c.mate(me);
+
+        assertEq(c.quitTo(), address(0));
+
+        vm.expectRevert("RwaInputConduit3/invalid-quit-to-address");
+        c.quit();
     }
 
     function testQuitAmountFuzz(uint256 amt) public {
@@ -407,27 +431,6 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.quit(1);
     }
 
-    function testRevertOnPushWhenToAddressNotSet() public {
-        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
-        c.mate(me);
-        c.file("to", address(0));
-
-        assertEq(c.to(), address(0));
-
-        vm.expectRevert("RwaInputConduit3/invalid-to-address");
-        c.push();
-    }
-
-    function testRevertOnQuitWhenQuitToAddressNotSet() public {
-        RwaInputConduit3 c = new RwaInputConduit3(address(psmA), address(testUrn));
-        c.mate(me);
-
-        assertEq(c.quitTo(), address(0));
-
-        vm.expectRevert("RwaInputConduit3/invalid-quit-to-address");
-        c.quit();
-    }
-
     function testYank() public {
         uint256 wad = 100 ether;
 
@@ -438,9 +441,9 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(address(inputConduit)), wad);
 
         vm.expectEmit(true, true, false, false);
-        emit Yank(address(me), wad);
+        emit Yank(address(dai), address(me), wad);
 
-        inputConduit.yank(me);
+        inputConduit.yank(address(dai), me, dai.balanceOf(address(inputConduit)));
         assertEq(dai.balanceOf(me), daiBalance + wad);
         assertEq(dai.balanceOf(address(inputConduit)), 0);
     }
@@ -472,11 +475,5 @@ contract TestVow is Vow {
     // Unqueued, pre-auction debt
     function Woe() public view returns (uint256) {
         return sub(sub(Awe(), Sin), Ash);
-    }
-}
-
-contract TestUrn {
-    function balance(address gem) public view returns (uint256) {
-        return DSToken(gem).balanceOf(address(this));
     }
 }

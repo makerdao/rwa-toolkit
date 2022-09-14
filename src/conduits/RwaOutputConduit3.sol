@@ -33,9 +33,9 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - Requires a PSM address in the constructor.
  *  - `pick` can be called to set the `to` address. Eligible `to` addresses should be whitelisted by an admin through `kiss`.
  *  - The `push()` method swaps DAI to GEM using PSM and set `to` to zero address.
- *  - The `push()` method with `amount` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
+ *  - The `push()` method with `wad` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
  *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `quit` method with `amount` argument allows moving specified amount of DAI balance to `quitTo`
+ *  - The `quit` method with `wad` argument allows moving specified amount of DAI balance to `quitTo`
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
@@ -130,11 +130,12 @@ contract RwaOutputConduit3 {
      */
     event Quit(address indexed quitTo, uint256 wad);
     /**
-     * @notice The conduit outstanding gem balance was flushed out to destination address.
+     * @notice The conduit outstanding `token` balance was flushed out to destination address.
+     * @param token The token address.
      * @param usr The destination address.
-     * @param amt The amount of Gem flushed out.
+     * @param amt The amount of `token` flushed out.
      */
-    event Yank(address indexed usr, uint256 amt);
+    event Yank(address indexed token, address indexed usr, uint256 amt);
 
     /**
      * @notice Defines PSM and quitTo addresses and gives `msg.sender` admin access.
@@ -311,14 +312,19 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Flushes out any GEM balance to `usr` address.
-     * @param usr Destination address
+     * @notice Flushes out any `token` balance to `usr` address.
+     * @param token Destination address.
+     * @param usr Destination address.
+     * @param amt Token amount.
      * @dev Can be called only by admin.
      */
-    function yank(address usr) external auth {
-        uint256 amt = gem.balanceOf(address(this));
-        gem.transfer(usr, amt);
-        emit Yank(usr, amt);
+    function yank(
+        address token,
+        address usr,
+        uint256 amt
+    ) external auth {
+        GemAbstract(token).transfer(usr, amt);
+        emit Yank(token, usr, amt);
     }
 
     /**

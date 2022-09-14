@@ -49,7 +49,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     AuthGemJoin5 joinA;
     DssPsm psmA;
     RwaOutputConduit3 outputConduit;
-    TestUrn testUrn;
+    address testUrn;
 
     bytes32 constant ilk = "usdx";
 
@@ -68,7 +68,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
-    event Yank(address indexed usr, uint256 amt);
+    event Yank(address indexed token, address indexed usr, uint256 amt);
 
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10**9;
@@ -120,7 +120,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function setUp() public {
         setUpMCDandPSM();
 
-        testUrn = new TestUrn();
+        testUrn = vm.addr(420);
         outputConduit = new RwaOutputConduit3(address(psmA));
         outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
@@ -283,7 +283,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("quitTo"), address(0));
 
         vm.expectRevert("RwaOutputConduit3/not-authorized");
-        outputConduit.yank(address(0));
+        outputConduit.yank(address(0), me, 0);
     }
 
     function testRevertOnNotMateMethods() public {
@@ -386,7 +386,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.push(wad);
 
         assertEq(usdx.balanceOf(me), usdxBalance + outputConduit.expectedGemAmt(wad));
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals(), which can be exited using 'quit' method
+        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
@@ -489,9 +489,9 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(usdx.balanceOf(address(outputConduit)), USDX_AMOUNT);
 
         vm.expectEmit(true, true, false, false);
-        emit Yank(address(me), USDX_AMOUNT);
+        emit Yank(address(usdx), address(me), USDX_AMOUNT);
 
-        outputConduit.yank(me);
+        outputConduit.yank(address(usdx), me, USDX_AMOUNT);
         assertEq(usdx.balanceOf(me), usdxBalance + USDX_AMOUNT);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
     }
@@ -529,11 +529,5 @@ contract TestVow is Vow {
     // Unqueued, pre-auction debt
     function Woe() public view returns (uint256) {
         return sub(sub(Awe(), Sin), Ash);
-    }
-}
-
-contract TestUrn {
-    function balance(address gem) public view returns (uint256) {
-        return DSToken(gem).balanceOf(address(this));
     }
 }

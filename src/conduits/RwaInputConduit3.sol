@@ -92,17 +92,18 @@ contract RwaInputConduit3 {
      */
     event File(bytes32 indexed what, address data);
     /**
-     * @notice The conduit outstanding gem balance was flushed out to `exitAddress`.
+     * @notice The conduit outstanding gem balance was flushed out to `quitTo`.
      * @param quitTo The quitTo address.
      * @param wad The amount flushed out.
      */
     event Quit(address indexed quitTo, uint256 wad);
     /**
-     * @notice The conduit outstanding DAI balance was flushed out to destination address.
+     * @notice The conduit outstanding `token` balance was flushed out to destination address.
+     * @param token The token address.
      * @param usr The destination address.
-     * @param wad The amount of DAI flushed out.
+     * @param amt The amount of `token` flushed out.
      */
-    event Yank(address indexed usr, uint256 wad);
+    event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
         require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
@@ -183,7 +184,7 @@ contract RwaInputConduit3 {
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"quitTo", "to"`
+     * @param what The changed parameter name. `"to", "quitTo"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
@@ -237,14 +238,19 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out all outstanding DAI balance to `usr` address.
+     * @notice Flushes out all outstanding `token` balance to `usr` address.
      * @dev Can only be called by the admin
+     * @param token Destination address.
      * @param usr Destination address.
+     * @param amt Token amount.
      */
-    function yank(address usr) external auth {
-        uint256 wad = dai.balanceOf(address(this));
-        dai.transfer(usr, wad);
-        emit Yank(usr, wad);
+    function yank(
+        address token,
+        address usr,
+        uint256 amt
+    ) external auth {
+        GemAbstract(token).transfer(usr, amt);
+        emit Yank(token, usr, amt);
     }
 
     /**
@@ -262,14 +268,10 @@ contract RwaInputConduit3 {
      */
     function _doPush(uint256 amt) internal {
         require(to != address(0), "RwaInputConduit3/invalid-to-address");
-        uint256 prevDaiBalance = dai.balanceOf(address(this));
 
-        psm.sellGem(address(this), amt);
+        psm.sellGem(to, amt);
 
-        uint256 daiPushAmt = sub(dai.balanceOf(address(this)), prevDaiBalance);
-        dai.transfer(to, daiPushAmt);
-
-        emit Push(to, daiPushAmt);
+        emit Push(to, _gemToDai(amt));
     }
 
     /**
@@ -280,6 +282,16 @@ contract RwaInputConduit3 {
         require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
+    }
+
+    /**
+     * @notice DAI received for swapping `gemAmt` of GEM
+     * @param amt GEM amount.
+     */
+    function _gemToDai(uint256 amt) internal view returns (uint256) {
+        uint256 amt18 = mul(amt, to18ConvertionFactor);
+        uint256 fee = mul(amt18, psm.tin()) / WAD;
+        return sub(amt18, fee);
     }
 
     /*//////////////////////////////////

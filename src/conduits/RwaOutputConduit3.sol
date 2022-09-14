@@ -327,7 +327,7 @@ contract RwaOutputConduit3 {
      * @return gemAmt Amount of GEM expected.
      */
     function expectedGemAmt(uint256 wad) public view returns (uint256) {
-        return mul(wad, WAD) / add(WAD, psm.tout()) / to18ConvertionFactor;
+        return mul(wad, WAD) / mul(add(WAD, psm.tout()), to18ConvertionFactor);
     }
 
     /**

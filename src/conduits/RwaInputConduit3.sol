@@ -253,7 +253,7 @@ contract RwaInputConduit3 {
      * @return gemAmt Amount of GEM required.
      */
     function requiredGemAmt(uint256 wad) external view returns (uint256 gemAmt) {
-        return mul(wad, WAD) / sub(WAD, psm.tin()) / to18ConvertionFactor;
+        return mul(wad, WAD) / mul(sub(WAD, psm.tin()), to18ConvertionFactor);
     }
 
     /**

@@ -33,9 +33,9 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - Requires a PSM address in the constructor.
  *  - `pick` can be called to set the `to` address. Eligible `to` addresses should be whitelisted by an admin through `kiss`.
  *  - The `push()` method swaps DAI to GEM using PSM and set `to` to zero address.
- *  - The `push()` method with `amount` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
+ *  - The `push()` method with `wad` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
  *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `quit` method with `amount` argument allows moving specified amount of DAI balance to `quitTo`
+ *  - The `quit` method with `wad` argument allows moving specified amount of DAI balance to `quitTo`
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {

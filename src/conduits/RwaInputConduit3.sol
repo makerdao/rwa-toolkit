@@ -262,14 +262,10 @@ contract RwaInputConduit3 {
      */
     function _doPush(uint256 amt) internal {
         require(to != address(0), "RwaInputConduit3/invalid-to-address");
-        uint256 prevDaiBalance = dai.balanceOf(address(this));
 
-        psm.sellGem(address(this), amt);
+        psm.sellGem(to, amt);
 
-        uint256 daiPushAmt = sub(dai.balanceOf(address(this)), prevDaiBalance);
-        dai.transfer(to, daiPushAmt);
-
-        emit Push(to, daiPushAmt);
+        emit Push(to, gemToDai(amt));
     }
 
     /**
@@ -280,6 +276,16 @@ contract RwaInputConduit3 {
         require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
+    }
+
+    /**
+     * @notice DAI received for swapping `gemAmt` of GEM
+     * @param amt GEM amount.
+     */
+    function gemToDai(uint256 amt) internal view returns (uint256) {
+        uint256 amt18 = mul(amt, to18ConvertionFactor);
+        uint256 fee = mul(amt18, psm.tin()) / WAD;
+        return sub(amt18, fee);
     }
 
     /*//////////////////////////////////

@@ -323,7 +323,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -345,8 +346,9 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push(500 ether);
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -368,8 +370,28 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), outputConduit.expectedGemAmt(500 ether));
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
+        assertEq(outputConduit.to(), address(0));
+    }
+
+    function testPushAmountWhenAlreadyHaveSomeDaiBalance() public {
+        assertEq(outputConduit.to(), me);
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(dai.balanceOf(address(me)), 1000 ether);
+
+        dai.transfer(address(outputConduit), 500 ether);
+
+        assertEq(dai.balanceOf(me), 500 ether);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(me), 400 * USDX_BASE_UNIT);
+        // push ionly 400 leave 100 dai in conduit
+        outputConduit.push(400 ether);
+
+        assertEq(usdx.balanceOf(address(me)), 400 * USDX_BASE_UNIT);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 100 ether, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -385,9 +407,50 @@ contract RwaOutputConduit3Test is Test, DSMath {
         emit Push(address(me), wad / USDX_DAI_DIF_DECIMALS);
         outputConduit.push(wad);
 
-        assertEq(usdx.balanceOf(me), usdxBalance + outputConduit.expectedGemAmt(wad));
+        assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_DIF_DECIMALS);
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
+        assertEq(outputConduit.to(), address(0));
+    }
+
+    function testExpectedGemAmountFuzz(uint256 wad) public {
+        assertEq(outputConduit.to(), me);
+        dai.transfer(address(outputConduit), dai.balanceOf(me));
+        uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
+        uint256 usdxBalance = usdx.balanceOf(me);
+
+        wad = bound(wad, 10**18, cDaiBalance);
+        uint256 expectedGem = outputConduit.expectedGemAmt(wad);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(me), expectedGem);
+        outputConduit.push(wad);
+
+        assertEq(usdx.balanceOf(me), usdxBalance + expectedGem);
+        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
+        assertEq(outputConduit.to(), address(0));
+    }
+
+    function testRequiredDaiAmountFuzz(uint256 amt) public {
+        assertEq(outputConduit.to(), me);
+        uint256 daiBalance = dai.balanceOf(me);
+
+        amt = bound(amt, 1 * USDX_BASE_UNIT, outputConduit.expectedGemAmt(daiBalance));
+        uint256 requiredDai = outputConduit.requiredDaiAmt(amt);
+
+        dai.transfer(address(outputConduit), requiredDai);
+
+        uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
+        uint256 usdxBalance = usdx.balanceOf(me);
+
+        vm.expectEmit(true, false, false, false);
+        emit Push(address(me), amt);
+        outputConduit.push(requiredDai);
+
+        assertEq(usdx.balanceOf(me), usdxBalance + amt);
+        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - requiredDai, USDX_DAI_DIF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
     }
 

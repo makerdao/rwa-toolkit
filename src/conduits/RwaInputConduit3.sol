@@ -30,10 +30,10 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
  *  - Require PSM address in constructor
- *  - The `push()` method swaps GEM to DAI using PSM
+ *  - The `push()` method swaps entire GEM balance to DAI using PSM
  *  - THe `push()` method with `amt` argument swaps specified amount of GEM to DAI using PSM
- *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by the admin.
- *  - The `quit` method with `amount` argument allows moving specified amount of GEM balance to `quitTo`.
+ *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
+ *  - The `quit` method with `amt` argument allows moving specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file` method allows updating `quitTo`, `to` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
@@ -56,7 +56,7 @@ contract RwaInputConduit3 {
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice Exit address
+    /// @notice Address to where Gem goes after calling `quit`
     address public quitTo;
 
     /**
@@ -238,9 +238,9 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out all outstanding `token` balance to `usr` address.
+     * @notice Flushes out specific `amt` of `token` to `usr` address.
      * @dev Can only be called by the admin
-     * @param token Destination address.
+     * @param token Token address.
      * @param usr Destination address.
      * @param amt Token amount.
      */

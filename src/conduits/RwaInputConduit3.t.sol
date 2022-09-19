@@ -383,6 +383,20 @@ contract RwaInputConduit3Test is Test, DSMath {
         c.push();
     }
 
+    function testRequiredGemAmountFuzz(uint256 wad) public {
+        uint256 myGemBlance = usdx.balanceOf(me);
+        wad = bound(wad, 10**18, gemToDai(myGemBlance));
+
+        uint256 amt = inputConduit.requiredGemAmt(wad);
+        usdx.transfer(address(inputConduit), amt);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), amt * USDX_DAI_DIF_DECIMALS);
+        inputConduit.push(amt);
+
+        assertApproxEqAbs(dai.balanceOf(address(testUrn)), wad, USDX_DAI_DIF_DECIMALS);
+    }
+
     function testQuit() public {
         usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
 

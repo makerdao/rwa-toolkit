@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2021 Lev Livnev <lev@liv.nev.org.uk>
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -129,7 +129,7 @@ contract RwaInputConduit3 {
         gem = _gem;
         to = _to;
 
-        to18ConvertionFactor = 10**sub(18, _gem.decimals());
+        to18ConvertionFactor = 10**_sub(18, _gem.decimals());
 
         // Give unlimited approve to PSM gemjoin
         _gem.approve(address(PsmAbstract(_psm).gemJoin()), type(uint256).max);
@@ -259,7 +259,7 @@ contract RwaInputConduit3 {
      * @return gemAmt Amount of GEM required.
      */
     function requiredGemAmt(uint256 wad) external view returns (uint256 gemAmt) {
-        return mul(wad, WAD) / mul(sub(WAD, psm.tin()), to18ConvertionFactor);
+        return _mul(wad, WAD) / _mul(_sub(WAD, psm.tin()), to18ConvertionFactor);
     }
 
     /**
@@ -289,9 +289,9 @@ contract RwaInputConduit3 {
      * @param amt GEM amount.
      */
     function _gemToDai(uint256 amt) internal view returns (uint256) {
-        uint256 amt18 = mul(amt, to18ConvertionFactor);
-        uint256 fee = mul(amt18, psm.tin()) / WAD;
-        return sub(amt18, fee);
+        uint256 amt18 = _mul(amt, to18ConvertionFactor);
+        uint256 fee = _mul(amt18, psm.tin()) / WAD;
+        return _sub(amt18, fee);
     }
 
     /*//////////////////////////////////
@@ -300,11 +300,11 @@ contract RwaInputConduit3 {
 
     uint256 internal constant WAD = 10**18;
 
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
     }
 
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

@@ -32,10 +32,10 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - `pick` whitelist is managed by `kiss() / diss()` methods.
  *  - Requires a PSM address in the constructor.
  *  - `pick` can be called to set the `to` address. Eligible `to` addresses should be whitelisted by an admin through `kiss`.
- *  - The `push()` method swaps DAI to GEM using PSM and set `to` to zero address.
+ *  - The `push()` method swaps entire DAI balance to GEM using PSM and set `to` to zero address.
  *  - The `push()` method with `wad` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
  *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `quit` method with `wad` argument allows moving specified amount of DAI balance to `quitTo`
+ *  - The `quit` method with `wad` argument allows moving specified amount of DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
@@ -113,10 +113,10 @@ contract RwaOutputConduit3 {
     event Pick(address indexed who);
     /**
      * @notice `wad` amount of Dai was pushed to the recipient `to`.
-     * @param to The Dai recipient address
-     * @param wad The amount of Dai
+     * @param to The Gem recipient address
+     * @param amt The amount of Gem
      */
-    event Push(address indexed to, uint256 wad);
+    event Push(address indexed to, uint256 amt);
     /**
      * @notice A contract parameter was updated.
      * @param what The changed parameter name. Currently the supported values are: "quitTo".
@@ -312,11 +312,11 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Flushes out any `token` balance to `usr` address.
-     * @param token Destination address.
+     * @notice Flushes out specific `amt` of `token` to `usr` address.
+     * @dev Can only be called by the admin
+     * @param token Token address.
      * @param usr Destination address.
      * @param amt Token amount.
-     * @dev Can be called only by admin.
      */
     function yank(
         address token,
@@ -334,6 +334,17 @@ contract RwaOutputConduit3 {
      */
     function expectedGemAmt(uint256 wad) public view returns (uint256) {
         return mul(wad, WAD) / mul(add(WAD, psm.tout()), to18ConvertionFactor);
+    }
+
+    /**
+     * @notice Calculate required amount of DAI to get `amt` amount of GEM .
+     * @param amt GEM amount.
+     * @return wad Amount of DAI required.
+     */
+    function requiredDaiAmt(uint256 amt) external view returns (uint256) {
+        uint256 gemAmt18 = mul(amt, to18ConvertionFactor);
+        uint256 fee = mul(gemAmt18, psm.tout()) / WAD;
+        return add(gemAmt18, fee);
     }
 
     /**

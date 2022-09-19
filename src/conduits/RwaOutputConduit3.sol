@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: © 2020-2021 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2021 Lev Livnev <lev@liv.nev.org.uk>
 // SPDX-FileCopyrightText: © 2022 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -146,7 +146,7 @@ contract RwaOutputConduit3 {
         psm = PsmAbstract(_psm);
         gem = _gem;
         dai = DaiAbstract(PsmAbstract(_psm).dai());
-        to18ConvertionFactor = 10**sub(18, _gem.decimals());
+        to18ConvertionFactor = 10**_sub(18, _gem.decimals());
 
         // Give unlimited approve to PSM
         dai.approve(_psm, type(uint256).max);
@@ -333,7 +333,7 @@ contract RwaOutputConduit3 {
      * @return gemAmt Amount of GEM expected.
      */
     function expectedGemAmt(uint256 wad) public view returns (uint256) {
-        return mul(wad, WAD) / mul(add(WAD, psm.tout()), to18ConvertionFactor);
+        return _mul(wad, WAD) / _mul(_add(WAD, psm.tout()), to18ConvertionFactor);
     }
 
     /**
@@ -342,9 +342,9 @@ contract RwaOutputConduit3 {
      * @return wad Amount of DAI required.
      */
     function requiredDaiAmt(uint256 amt) external view returns (uint256) {
-        uint256 gemAmt18 = mul(amt, to18ConvertionFactor);
-        uint256 fee = mul(gemAmt18, psm.tout()) / WAD;
-        return add(gemAmt18, fee);
+        uint256 gemAmt18 = _mul(amt, to18ConvertionFactor);
+        uint256 fee = _mul(gemAmt18, psm.tout()) / WAD;
+        return _add(gemAmt18, fee);
     }
 
     /**
@@ -382,15 +382,15 @@ contract RwaOutputConduit3 {
 
     uint256 internal constant WAD = 10**18;
 
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "Math/add-overflow");
     }
 
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "Math/sub-overflow");
     }
 
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

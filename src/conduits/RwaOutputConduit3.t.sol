@@ -308,6 +308,13 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.pick(vm.addr(1));
     }
 
+    function testRevertOnPickZeroAddress() public {
+        outputConduit.kiss(address(0));
+
+        vm.expectRevert("RwaOutputConduit3/not-bud");
+        outputConduit.pick(vm.addr(1));
+    }
+
     function testPush() public {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);

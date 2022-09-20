@@ -29,31 +29,32 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - Require PSM address in constructor
- *  - The `push()` method swaps entire GEM balance to DAI using PSM
- *  - THe `push()` method with `amt` argument swaps specified amount of GEM to DAI using PSM
- *  - The `quit` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `quit` method with `amt` argument allows moving specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `file` method allows updating `quitTo`, `to`, `psm` addresses. It can be called only by the admin.
+ *  - Requires DAI, GEM and PSM addresses in the constructor.
+ *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
+ *  - The `push()` method swaps entire GEM balance to DAI using PSM.
+ *  - THe `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
+ *  - The `quit()` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
+ *  - The `quit(uint256)` method allows moving the specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
+ *  - The `file(bytes32, address)` method allows updating `quitTo`, `to`, `psm` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
-    /// @notice PSM GEM token contract address
+    /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
-    /// @notice Dai token contract address
+    /// @notice DAI token contract address.
     DaiAbstract public immutable dai;
     /// @dev DAI/GEM resolution difference.
-    uint256 private immutable to18ConvertionFactor;
+    uint256 private immutable to18ConversionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
-    /// @notice PSM contract address
+    /// @notice PSM contract address.
     PsmAbstract public psm;
-    /// @notice RWA urn contract address
+    /// @notice Recipient address for DAI.
     address public to;
-    /// @notice Address to where Gem goes after calling `quit`
+    /// @notice Destination address for GEM after calling `quit`.
     address public quitTo;
 
     /**
@@ -77,9 +78,9 @@ contract RwaInputConduit3 {
      */
     event Hate(address indexed usr);
     /**
-     * @notice `wad` amount of Dai was pushed to `to`
-     * @param to The RwaUrn address
-     * @param wad The amount of Dai
+     * @notice `wad` amount of Dai was pushed to `to`.
+     * @param to Recipient address for DAI.
+     * @param wad The amount of DAI.
      */
     event Push(address indexed to, uint256 wad);
     /**
@@ -89,13 +90,13 @@ contract RwaInputConduit3 {
      */
     event File(bytes32 indexed what, address data);
     /**
-     * @notice The conduit outstanding gem balance was flushed out to `quitTo`.
+     * @notice The conduit outstanding GEM balance was flushed out to `quitTo`.
      * @param quitTo The quitTo address.
-     * @param wad The amount flushed out.
+     * @param wad The amount of GEM flushed out.
      */
     event Quit(address indexed quitTo, uint256 wad);
     /**
-     * @notice The conduit outstanding `token` balance was flushed out to destination address.
+     * @notice `amt` outstanding `token` balance was flushed out to `usr`.
      * @param token The token address.
      * @param usr The destination address.
      * @param amt The amount of `token` flushed out.
@@ -113,7 +114,7 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Define addresses and gives `msg.sender` admin access.
+     * @notice Defines addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
      * @param _dai DAI contract address.
      * @param _gem GEM contract address.
@@ -130,14 +131,15 @@ contract RwaInputConduit3 {
         require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaInputConduit3/wrong-gem-for-psm");
 
         // We assume that DAI will alway have 18 decimals
-        to18ConvertionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
-        to = _to;
+        to18ConversionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
 
         psm = PsmAbstract(_psm);
         dai = DaiAbstract(_dai);
         gem = GemAbstract(_gem);
 
-        // Give unlimited approve to PSM gemjoin
+        to = _to;
+
+        // Give unlimited approval to PSM gemjoin
         GemAbstract(_gem).approve(address(psm.gemJoin()), type(uint256).max);
 
         wards[msg.sender] = 1;
@@ -217,7 +219,7 @@ contract RwaInputConduit3 {
     //////////////////////////////////*/
 
     /**
-     * @notice Swaps the GEM balance of this contract into DAI through the PSM and push it into the `to` address.
+     * @notice Swaps the GEM balance of this contract into DAI through the PSM and push it into the recipient address.
      * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external onlyMate {
@@ -225,7 +227,7 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the recipient address.
      * @dev `msg.sender` must have received push access through `mate()`.
      * @param amt Gem amount.
      */
@@ -242,7 +244,7 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out specific amount of GEM balance to `quitTo` address.
+     * @notice Flushes out the specified amount of GEM balance to `quitTo` address.
      * @dev `msg.sender` must have received push access through `mate()`.
      * @param amt Gem amount.
      */
@@ -251,8 +253,8 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Flushes out specific `amt` of `token` to `usr` address.
-     * @dev Can only be called by the admin
+     * @notice Flushes out `amt` of `token` sitting in this contract to `usr` address.
+     * @dev Can only be called by the admin.
      * @param token Token address.
      * @param usr Destination address.
      * @param amt Token amount.
@@ -287,15 +289,14 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the `to` address.
+     * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the recipient address.
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
         require(to != address(0), "RwaInputConduit3/invalid-to-address");
 
         psm.sellGem(to, amt);
-
-        emit Push(to, _gemToDai(amt));
+        emit Push(to, expectedDaiWad(amt));
     }
 
     /**
@@ -304,6 +305,7 @@ contract RwaInputConduit3 {
      */
     function _doQuit(uint256 amt) internal {
         require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
+
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
     }

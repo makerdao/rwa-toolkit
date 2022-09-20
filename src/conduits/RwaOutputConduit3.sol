@@ -341,23 +341,23 @@ contract RwaOutputConduit3 {
     }
 
     /**
-     * @notice Calculate expected amount of GEM received for swapping `wad` amount of DAI.
+     * @notice Calculates the amount of GEM received for swapping `wad` of DAI.
      * @param wad DAI amount.
-     * @return gemAmt Amount of GEM expected.
+     * @return amt Expected GEM amount.
      */
-    function expectedGemAmt(uint256 wad) public view returns (uint256) {
-        return _mul(wad, WAD) / _mul(_add(WAD, psm.tout()), to18ConvertionFactor);
+    function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
+        return _mul(wad, WAD) / _mul(_add(WAD, psm.tout()), to18ConversionFactor);
     }
 
     /**
-     * @notice Calculate required amount of DAI to get `amt` amount of GEM .
+     * @notice Calculates the required amount of DAI to get `amt` amount of GEM.
      * @param amt GEM amount.
-     * @return wad Amount of DAI required.
+     * @return wad Required DAI amount.
      */
-    function requiredDaiAmt(uint256 amt) external view returns (uint256) {
-        uint256 gemAmt18 = _mul(amt, to18ConvertionFactor);
-        uint256 fee = _mul(gemAmt18, psm.tout()) / WAD;
-        return _add(gemAmt18, fee);
+    function requiredDaiWad(uint256 amt) external view returns (uint256 wad) {
+        uint256 amt18 = _mul(amt, to18ConversionFactor);
+        uint256 fee = _mul(amt18, psm.tout()) / WAD;
+        return _add(amt18, fee);
     }
 
     /**

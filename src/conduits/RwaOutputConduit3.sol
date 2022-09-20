@@ -36,13 +36,13 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The `push()` method with `wad` argument swaps specified amount of DAI to GEM using PSM and set `to` to zero address.
  *  - The `quit` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `quit` method with `wad` argument allows moving specified amount of DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `file` method allows updating `quitTo` addresses. It can be called only by the admin.
+ *  - The `file` method allows updating `quitTo`, `psm` addresses. It can be called only by the admin.
  */
 contract RwaOutputConduit3 {
     /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
-    /// @notice PSM contract address.
-    PsmAbstract public immutable psm;
+    /// @notice Dai token contract address.
+    DaiAbstract public immutable dai;
     /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConvertionFactor;
 
@@ -50,19 +50,15 @@ contract RwaOutputConduit3 {
     mapping(address => uint256) public wards;
     /// @dev Addresses with operator access on this contract. `can[usr]`
     mapping(address => uint256) public can;
-
-    /// @dev Not used
-    address private __unused_gov;
-    /// @notice Dai token contract address.
-    DaiAbstract public dai;
-    /// @notice Dai Recipient address.
-    address public to;
-
     /// @notice Whitelist for addresses which can be picked. `bud[who]`
     mapping(address => uint256) public bud;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
+    /// @notice PSM contract address.
+    PsmAbstract public psm;
+    /// @notice Dai Recipient address.
+    address public to;
     /// @notice Address to where DAI goes after calling `quit`
     address public quitTo;
 
@@ -119,7 +115,7 @@ contract RwaOutputConduit3 {
     event Push(address indexed to, uint256 amt);
     /**
      * @notice A contract parameter was updated.
-     * @param what The changed parameter name. Currently the supported values are: "quitTo".
+     * @param what The changed parameter name. Currently the supported values are: "quitTo", "psm".
      * @param data The new value of the parameter.
      */
     event File(bytes32 indexed what, address data);
@@ -138,18 +134,27 @@ contract RwaOutputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     /**
-     * @notice Defines PSM and quitTo addresses and gives `msg.sender` admin access.
+     * @notice Defines addresses and gives `msg.sender` admin access.
      * @param _psm PSM contract address.
+     * @param _dai DAI contract address.
+     * @param _gem GEM contract address.
      */
-    constructor(address _psm) public {
-        GemAbstract _gem = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem());
+    constructor(
+        address _dai,
+        address _gem,
+        address _psm
+    ) public {
+        require(PsmAbstract(_psm).dai() == _dai, "RwaOutputConduit3/wrong-dai-for-psm");
+        require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaOutputConduit3/wrong-gem-for-psm");
+
+        to18ConvertionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
+
         psm = PsmAbstract(_psm);
-        gem = _gem;
-        dai = DaiAbstract(PsmAbstract(_psm).dai());
-        to18ConvertionFactor = 10**_sub(18, _gem.decimals());
+        dai = DaiAbstract(_dai);
+        gem = GemAbstract(_gem);
 
         // Give unlimited approve to PSM
-        dai.approve(_psm, type(uint256).max);
+        DaiAbstract(_dai).approve(_psm, type(uint256).max);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -248,12 +253,19 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"quitTo"`
+     * @param what The changed parameter name. `"quitTo", "psm"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
         if (what == "quitTo") {
             quitTo = data;
+        } else if (what == "psm") {
+            require(PsmAbstract(data).dai() == address(dai), "RwaOutputConduit3/wrong-dai-for-psm");
+            require(
+                GemJoinAbstract(PsmAbstract(data).gemJoin()).gem() == address(gem),
+                "RwaOutputConduit3/wrong-gem-for-psm"
+            );
+            psm = PsmAbstract(data);
         } else {
             revert("RwaOutputConduit3/unrecognised-param");
         }

@@ -92,8 +92,8 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         deal(address(dai), me, 2 * URN_INK);
 
-        inputConduit = new RwaInputConduit3(psm, testUrn);
-        outputConduit = new RwaOutputConduit3(psm);
+        inputConduit = new RwaInputConduit3(address(dai), address(gem), psm, testUrn);
+        outputConduit = new RwaOutputConduit3(address(dai), address(gem), psm);
 
         inputConduit.mate(me);
         outputConduit.mate(me);

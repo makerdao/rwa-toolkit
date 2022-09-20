@@ -129,6 +129,7 @@ contract RwaInputConduit3 {
         require(PsmAbstract(_psm).dai() == _dai, "RwaInputConduit3/wrong-dai-for-psm");
         require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaInputConduit3/wrong-gem-for-psm");
 
+        // We assume that DAI will alway have 18 decimals
         to18ConvertionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
         to = _to;
 

@@ -147,6 +147,7 @@ contract RwaOutputConduit3 {
         require(PsmAbstract(_psm).dai() == _dai, "RwaOutputConduit3/wrong-dai-for-psm");
         require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaOutputConduit3/wrong-gem-for-psm");
 
+        // We assume that DAI will alway have 18 decimals
         to18ConvertionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
 
         psm = PsmAbstract(_psm);
@@ -165,7 +166,7 @@ contract RwaOutputConduit3 {
         _;
     }
 
-    modifier isMate() {
+    modifier onlyMate() {
         require(may[msg.sender] == 1, "RwaOutputConduit3/not-mate");
         _;
     }
@@ -293,7 +294,7 @@ contract RwaOutputConduit3 {
      * @notice Method to swap DAI contract balance to GEM through PSM and push it to the recipient address.
      * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
      */
-    function push() external isMate {
+    function push() external onlyMate {
         _doPush(dai.balanceOf(address(this)));
     }
 
@@ -302,7 +303,7 @@ contract RwaOutputConduit3 {
      * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
      * @param wad DAI amount.
      */
-    function push(uint256 wad) external isMate {
+    function push(uint256 wad) external onlyMate {
         _doPush(wad);
     }
 
@@ -310,7 +311,7 @@ contract RwaOutputConduit3 {
      * @notice Flushes out any DAI balance to `quitTo` address.
      * @dev `msg.sender` must have received push access through `mate()`.
      */
-    function quit() external isMate {
+    function quit() external onlyMate {
         _doQuit(dai.balanceOf(address(this)));
     }
 
@@ -319,7 +320,7 @@ contract RwaOutputConduit3 {
      * @dev `msg.sender` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
-    function quit(uint256 wad) external isMate {
+    function quit(uint256 wad) external onlyMate {
         _doQuit(wad);
     }
 

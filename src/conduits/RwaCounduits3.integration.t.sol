@@ -52,14 +52,6 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     RwaInputConduit3 inputConduit;
     RwaOutputConduit3 outputConduit;
 
-    function ray(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**9;
-    }
-
-    function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**27;
-    }
-
     function wad(uint256 rad_) internal pure returns (uint256) {
         return rad_ / 10**27;
     }

@@ -70,14 +70,6 @@ contract RwaOutputConduit3Test is Test, DSMath {
     event Quit(address indexed quitTo, uint256 wad);
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
-    function ray(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**9;
-    }
-
-    function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**27;
-    }
-
     function setUpMCDandPSM() internal {
         me = address(this);
 
@@ -591,6 +583,14 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.yank(address(usdx), me, USDX_AMOUNT);
         assertEq(usdx.balanceOf(me), usdxBalance + USDX_AMOUNT);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
+    }
+
+    function ray(uint256 wad) internal pure returns (uint256) {
+        return wad * 10**9;
+    }
+
+    function rad(uint256 wad) internal pure returns (uint256) {
+        return wad * 10**27;
     }
 }
 

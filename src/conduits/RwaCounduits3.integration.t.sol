@@ -52,22 +52,6 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     RwaInputConduit3 inputConduit;
     RwaOutputConduit3 outputConduit;
 
-    function wad(uint256 rad_) internal pure returns (uint256) {
-        return rad_ / 10**27;
-    }
-
-    function getDaiInAmount(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
-        uint256 fee = mul(gemAmt18, PSM_TOUT) / WAD;
-        return add(gemAmt18, fee);
-    }
-
-    function gemToDai(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
-        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
-        return sub(gemAmt18, fee);
-    }
-
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
         gem = GemAbstract(AuthGemJoinAbstract(address(DssPsm(psm).gemJoin())).gem());
@@ -206,6 +190,22 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
         outputConduit.push();
 
         assertEq(dai.balanceOf(address(outputConduit)), daiAmount);
+    }
+
+    function wad(uint256 rad_) internal pure returns (uint256) {
+        return rad_ / 10**27;
+    }
+
+    function getDaiInAmount(uint256 gemAmt) internal view returns (uint256) {
+        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TOUT) / WAD;
+        return add(gemAmt18, fee);
+    }
+
+    function gemToDai(uint256 gemAmt) internal view returns (uint256) {
+        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
+        return sub(gemAmt18, fee);
     }
 }
 

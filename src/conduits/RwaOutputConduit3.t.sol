@@ -465,7 +465,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         uint256 daiBalance = dai.balanceOf(me);
 
         amt = bound(amt, 1 * USDX_BASE_UNIT, outputConduit.expectedGemAmt(daiBalance));
-        uint256 requiredDai = outputConduit.requiredDaiAmt(amt);
+        uint256 requiredDai = outputConduit.requiredDaiWad(amt);
 
         dai.transfer(address(outputConduit), requiredDai);
 

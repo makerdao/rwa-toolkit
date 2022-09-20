@@ -267,12 +267,23 @@ contract RwaInputConduit3 {
     }
 
     /**
-     * @notice Calculate required amount of GEM to get `wad` amount of DAI.
-     * @param wad DAI amount.
-     * @return gemAmt Amount of GEM required.
+     * @notice Calculates the amount of DAI received for swapping `amt` of GEM.
+     * @param amt GEM amount.
+     * @return wad Expected DAI amount.
      */
-    function requiredGemAmt(uint256 wad) external view returns (uint256 gemAmt) {
-        return _mul(wad, WAD) / _mul(_sub(WAD, psm.tin()), to18ConvertionFactor);
+    function expectedDaiWad(uint256 amt) public view returns (uint256 wad) {
+        uint256 amt18 = _mul(amt, to18ConversionFactor);
+        uint256 fee = _mul(amt18, psm.tin()) / WAD;
+        return _sub(amt18, fee);
+    }
+
+    /**
+     * @notice Calculates the required amount of GEM to get `wad` amount of DAI.
+     * @param wad DAI amount.
+     * @return amt Required GEM amount.
+     */
+    function requiredGemAmt(uint256 wad) external view returns (uint256 amt) {
+        return _mul(wad, WAD) / _mul(_sub(WAD, psm.tin()), to18ConversionFactor);
     }
 
     /**
@@ -295,16 +306,6 @@ contract RwaInputConduit3 {
         require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);
-    }
-
-    /**
-     * @notice DAI received for swapping `gemAmt` of GEM
-     * @param amt GEM amount.
-     */
-    function _gemToDai(uint256 amt) internal view returns (uint256) {
-        uint256 amt18 = _mul(amt, to18ConvertionFactor);
-        uint256 fee = _mul(amt18, psm.tin()) / WAD;
-        return _sub(amt18, fee);
     }
 
     /*//////////////////////////////////

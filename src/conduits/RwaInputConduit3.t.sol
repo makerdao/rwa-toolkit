@@ -68,20 +68,6 @@ contract RwaInputConduit3Test is Test, DSMath {
     event Quit(address indexed quitTo, uint256 wad);
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
-    function ray(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**9;
-    }
-
-    function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**27;
-    }
-
-    function gemToDai(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = mul(gemAmt, USDX_DAI_DIF_DECIMALS);
-        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
-        return sub(gemAmt18, fee);
-    }
-
     function setUpMCDandPSM() internal {
         me = address(this);
 
@@ -493,6 +479,20 @@ contract RwaInputConduit3Test is Test, DSMath {
         inputConduit.yank(address(dai), me, dai.balanceOf(address(inputConduit)));
         assertEq(dai.balanceOf(me), daiBalance + wad);
         assertEq(dai.balanceOf(address(inputConduit)), 0);
+    }
+
+    function ray(uint256 wad) internal pure returns (uint256) {
+        return wad * 10**9;
+    }
+
+    function rad(uint256 wad) internal pure returns (uint256) {
+        return wad * 10**27;
+    }
+
+    function gemToDai(uint256 gemAmt) internal view returns (uint256) {
+        uint256 gemAmt18 = mul(gemAmt, USDX_DAI_DIF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
+        return sub(gemAmt18, fee);
     }
 }
 

@@ -121,7 +121,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = vm.addr(420);
-        outputConduit = new RwaOutputConduit3(address(psmA));
+        outputConduit = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
         outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
         outputConduit.hope(me);
@@ -136,7 +136,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
 
         assertEq(c.wards(address(this)), 1);
     }
@@ -145,17 +145,19 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(dai.allowance(address(outputConduit), address(psmA)), type(uint256).max);
     }
 
-    function testRevertOnGemUnssuportedDecimals() public {
-        TestToken testGem = new TestToken("USDX", 19);
-        AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
-        DssPsm psm = new DssPsm(address(testJoin), address(daiJoin), address(vow));
+    function testRevertInvalidConstructorArguments() public {
+        vm.expectRevert();
+        new RwaOutputConduit3(address(0), address(0), address(0));
 
-        vm.expectRevert("Math/sub-overflow");
-        new RwaOutputConduit3(address(psm));
+        vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
+        new RwaOutputConduit3(address(0), address(usdx), address(psmA));
+
+        vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
+        new RwaOutputConduit3(address(dai), address(0), address(psmA));
     }
 
     function testRevertOnPushWhenToAddressNotPicked() public {
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
         c.mate(me);
         c.hope(me);
 
@@ -236,6 +238,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testFile() public {
+        // quitTo
         assertEq(outputConduit.quitTo(), address(testUrn));
 
         address quitToAddress = vm.addr(1);
@@ -245,6 +248,32 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("quitTo"), quitToAddress);
 
         assertEq(outputConduit.quitTo(), quitToAddress);
+
+        // psm
+        assertEq(address(outputConduit.psm()), address(psmA));
+
+        address psm = address(new DssPsm(address(joinA), address(daiJoin), address(vow)));
+        vm.expectEmit(true, true, false, false);
+        emit File(bytes32("psm"), psm);
+
+        outputConduit.file(bytes32("psm"), psm);
+
+        assertEq(address(outputConduit.psm()), psm);
+    }
+
+    function testRevertOnFilePsmWithWrongGemDaiAddresses() public {
+        address newGem = address(new TestToken("GEM", 6));
+        address joinNew = address(new AuthGemJoin5(address(vat), bytes32("GEM-A"), newGem));
+        address newDai = address(new Dai(0));
+        address newDaiJoin = address(new DaiJoin(address(vat), address(newDai)));
+
+        address psm = address(new DssPsm(address(joinA), address(newDaiJoin), address(vow)));
+        vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
+        outputConduit.file(bytes32("psm"), psm);
+
+        psm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
+        vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
+        outputConduit.file(bytes32("psm"), psm);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
@@ -533,13 +562,11 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testRevertOnQuitWhenQuitToAddressNotSet() public {
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(psmA));
-        c.mate(me);
-
-        assertEq(c.quitTo(), address(0));
+        outputConduit.file("quitTo", address(0));
+        assertEq(outputConduit.quitTo(), address(0));
 
         vm.expectRevert("RwaOutputConduit3/invalid-quit-to-address");
-        c.quit();
+        outputConduit.quit();
     }
 
     function testRevertOnQuitAmountMoreThenBalance() public {

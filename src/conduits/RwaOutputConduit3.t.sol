@@ -373,20 +373,14 @@ contract RwaOutputConduit3Test is Test, DSMath {
         // Init new PSM
         usdx.mint(USDX_MINT_AMOUNT);
 
-        vat.init(bytes32("USDX2"));
-
-        AuthGemJoin5 join = new AuthGemJoin5(address(vat), bytes32("USDX2"), address(usdx));
+        AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(usdx));
         vat.rely(address(join));
         DssPsm psm = new DssPsm(address(join), address(daiJoin), address(vow));
         join.rely(address(psm));
         join.deny(me);
 
-        spot.file(bytes32("USDX2"), bytes32("pip"), address(pip));
-        spot.file(bytes32("USDX2"), bytes32("mat"), ray(1 ether));
-        spot.poke(bytes32("USDX2"));
-
-        vat.file(bytes32("USDX2"), "line", rad(1000 ether));
-        vat.file("Line", rad(2000 ether));
+        vat.file(ilk, "line", rad(10000 ether));
+        vat.file("Line", rad(20000 ether));
 
         usdx.approve(address(join));
         psm.sellGem(me, USDX_MINT_AMOUNT);

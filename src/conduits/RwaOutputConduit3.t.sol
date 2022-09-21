@@ -460,11 +460,17 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(usdx.balanceOf(me), usdxBalance + expectedGem);
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
+        assertApproxEqAbs(
+            dai.balanceOf(address(outputConduit)),
+            cDaiBalance - outputConduit.requiredDaiWad(expectedGem),
+            USDX_DAI_DIF_DECIMALS
+        );
         assertEq(outputConduit.to(), address(0));
     }
 
     function testRequiredDaiAmountFuzz(uint256 amt) public {
+        psmA.file("tout", (1 * WAD) / 100); // add 1% fee
+
         assertEq(outputConduit.to(), me);
         uint256 daiBalance = dai.balanceOf(me);
 

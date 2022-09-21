@@ -251,6 +251,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("psm"), psm);
 
         assertEq(address(outputConduit.psm()), psm);
+        assertEq(dai.allowance(address(outputConduit), address(psmA)), 0);
+        assertEq(dai.allowance(address(outputConduit), address(psm)), type(uint256).max);
     }
 
     function testRevertOnFilePsmWithWrongGemDaiAddresses() public {

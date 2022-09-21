@@ -212,13 +212,16 @@ contract RwaInputConduit3Test is Test, DSMath {
         // psm
         assertEq(address(inputConduit.psm()), address(psmA));
 
-        address psm = address(new DssPsm(address(joinA), address(daiJoin), address(vow)));
+        AuthGemJoin5 newJoin = new AuthGemJoin5(address(vat), bytes32("USDX2"), address(usdx));
+        DssPsm psm = new DssPsm(address(newJoin), address(daiJoin), address(vow));
         vm.expectEmit(true, true, false, false);
-        emit File(bytes32("psm"), psm);
+        emit File(bytes32("psm"), address(psm));
 
-        inputConduit.file(bytes32("psm"), psm);
+        inputConduit.file(bytes32("psm"), address(psm));
 
-        assertEq(address(inputConduit.psm()), psm);
+        assertEq(address(inputConduit.psm()), address(psm));
+        assertEq(usdx.allowance(address(inputConduit), address(psmA.gemJoin())), 0);
+        assertEq(usdx.allowance(address(inputConduit), address(psm.gemJoin())), type(uint256).max);
     }
 
     function testRevertOnFilePsmWithWrongGemDaiAddresses() public {

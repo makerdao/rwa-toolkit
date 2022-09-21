@@ -207,9 +207,9 @@ contract RwaInputConduit3 {
                 "RwaInputConduit3/wrong-gem-for-psm"
             );
 
-            // Revoke approval for old PSM gemjoin
+            // Revoke approval for the old PSM gemjoin
             gem.approve(address(psm.gemJoin()), 0);
-            // Give unlimited approval to new PSM gemjoin
+            // Give unlimited approval to the new PSM gemjoin
             gem.approve(address(PsmAbstract(data).gemJoin()), type(uint256).max);
 
             psm = PsmAbstract(data);

@@ -47,15 +47,18 @@ contract RwaOutputConduit3Test is Test, DSMath {
     Dai dai;
 
     AuthGemJoin5 joinA;
-    DssPsm psmA;
+    DssPsm psm;
     RwaOutputConduit3 outputConduit;
     address testUrn;
 
-    bytes32 constant ilk = "usdx";
+    bytes32 constant ilk = "USDX-A";
 
-    uint256 constant USDX_BASE_UNIT = 10**6;
+    uint256 constant USDX_DECIMALS = 6;
+    uint256 constant USDX_BASE_UNIT = 10**USDX_DECIMALS;
     uint256 constant USDX_MINT_AMOUNT = 1000 * USDX_BASE_UNIT;
-    uint256 constant USDX_DAI_DIF_DECIMALS = 10**12;
+    uint256 constant USDX_DAI_CONVERSION_FACTOR = 10**12;
+    // Debt Ceiling 10x the normalized minted amount
+    uint256 constant PSM_LINE_WAD = 10 * USDX_MINT_AMOUNT * USDX_DAI_CONVERSION_FACTOR;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -82,7 +85,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         vow = new TestVow(address(vat), address(0), address(0));
 
-        usdx = new TestToken("USDX", 6);
+        usdx = new TestToken("USDX", uint8(USDX_DECIMALS));
         usdx.mint(USDX_MINT_AMOUNT);
 
         vat.init(ilk);
@@ -95,26 +98,26 @@ contract RwaOutputConduit3Test is Test, DSMath {
         vat.rely(address(daiJoin));
         dai.rely(address(daiJoin));
 
-        psmA = new DssPsm(address(joinA), address(daiJoin), address(vow));
-        joinA.rely(address(psmA));
+        psm = new DssPsm(address(joinA), address(daiJoin), address(vow));
+        joinA.rely(address(psm));
         joinA.deny(me);
 
         pip = new DSValue();
-        pip.poke(bytes32(uint256(1 ether))); // Spot = $1
+        pip.poke(bytes32(uint256(1 * WAD))); // Spot = $1
 
         spot.file(ilk, bytes32("pip"), address(pip));
-        spot.file(ilk, bytes32("mat"), ray(1 ether));
+        spot.file(ilk, bytes32("mat"), ray(1 * WAD));
         spot.poke(ilk);
 
-        vat.file(ilk, "line", rad(1000 ether));
-        vat.file("Line", rad(1000 ether));
+        vat.file(ilk, "line", rad(PSM_LINE_WAD));
+        vat.file("Line", rad(PSM_LINE_WAD));
     }
 
     function setUp() public {
         setUpMCDandPSM();
 
         testUrn = vm.addr(420);
-        outputConduit = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
+        outputConduit = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
         outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
         outputConduit.hope(me);
@@ -122,20 +125,29 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.pick(me);
 
         usdx.approve(address(joinA));
-        psmA.sellGem(me, USDX_MINT_AMOUNT);
+        psm.sellGem(me, USDX_MINT_AMOUNT);
     }
 
     function testSetWardAndEmitRelyOnDeploy() public {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
 
         assertEq(c.wards(address(this)), 1);
     }
 
     function testGiveUnlimitedApprovalToPsmDaiJoinOnDeploy() public {
-        assertEq(dai.allowance(address(outputConduit), address(psmA)), type(uint256).max);
+        assertEq(dai.allowance(address(outputConduit), address(psm)), type(uint256).max);
+    }
+
+    function testRevertOnGemUnssuportedDecimals() public {
+        TestToken testGem = new TestToken("USDX", 19);
+        AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
+        DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
+
+        vm.expectRevert("Math/sub-overflow");
+        new RwaOutputConduit3(address(dai), address(testGem), address(psmT));
     }
 
     function testRevertInvalidConstructorArguments() public {
@@ -143,14 +155,14 @@ contract RwaOutputConduit3Test is Test, DSMath {
         new RwaOutputConduit3(address(0), address(0), address(0));
 
         vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
-        new RwaOutputConduit3(address(0), address(usdx), address(psmA));
+        new RwaOutputConduit3(address(0), address(usdx), address(psm));
 
         vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
-        new RwaOutputConduit3(address(dai), address(0), address(psmA));
+        new RwaOutputConduit3(address(dai), address(0), address(psm));
     }
 
     function testRevertOnPushWhenToAddressNotPicked() public {
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psmA));
+        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
         c.mate(me);
         c.hope(me);
 
@@ -161,6 +173,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testRelyDeny() public {
         assertEq(outputConduit.wards(address(0)), 0);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Rely(address(0));
 
@@ -168,6 +181,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(outputConduit.wards(address(0)), 1);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Deny(address(0));
 
@@ -179,6 +193,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testMateHate() public {
         assertEq(outputConduit.may(address(0)), 0);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Mate(address(0));
 
@@ -186,6 +201,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(outputConduit.may(address(0)), 1);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Hate(address(0));
 
@@ -197,6 +213,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testHopeNope() public {
         assertEq(outputConduit.can(address(0)), 0);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Hope(address(0));
 
@@ -204,6 +221,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(outputConduit.can(address(0)), 1);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Nope(address(0));
 
@@ -215,6 +233,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testKissDiss() public {
         assertEq(outputConduit.bud(address(0)), 0);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Kiss(address(0));
 
@@ -222,6 +241,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(outputConduit.bud(address(0)), 1);
 
+        // --------------------
         vm.expectEmit(true, false, false, false);
         emit Diss(address(0));
 
@@ -230,8 +250,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.bud(address(0)), 0);
     }
 
-    function testFile() public {
-        // quitTo
+    function testFileQuitTo() public {
         assertEq(outputConduit.quitTo(), address(testUrn));
 
         address quitToAddress = vm.addr(1);
@@ -241,19 +260,20 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file(bytes32("quitTo"), quitToAddress);
 
         assertEq(outputConduit.quitTo(), quitToAddress);
+    }
 
-        // psm
-        assertEq(address(outputConduit.psm()), address(psmA));
+    function testFilePsm() public {
+        assertEq(address(outputConduit.psm()), address(psm));
 
-        address psm = address(new DssPsm(address(joinA), address(daiJoin), address(vow)));
+        DssPsm newPsm = new DssPsm(address(joinA), address(daiJoin), address(vow));
         vm.expectEmit(true, true, false, false);
-        emit File(bytes32("psm"), psm);
+        emit File(bytes32("psm"), address(newPsm));
 
-        outputConduit.file(bytes32("psm"), psm);
+        outputConduit.file(bytes32("psm"), address(newPsm));
 
-        assertEq(address(outputConduit.psm()), psm);
-        assertEq(dai.allowance(address(outputConduit), address(psmA)), 0);
-        assertEq(dai.allowance(address(outputConduit), address(psm)), type(uint256).max);
+        assertEq(address(outputConduit.psm()), address(newPsm));
+        assertEq(dai.allowance(address(outputConduit), address(psm)), 0);
+        assertEq(dai.allowance(address(outputConduit), address(newPsm)), type(uint256).max);
     }
 
     function testRevertOnFilePsmWithWrongGemDaiAddresses() public {
@@ -262,13 +282,13 @@ contract RwaOutputConduit3Test is Test, DSMath {
         address newDai = address(new Dai(0));
         address newDaiJoin = address(new DaiJoin(address(vat), address(newDai)));
 
-        address psm = address(new DssPsm(address(joinA), address(newDaiJoin), address(vow)));
+        address newPsm = address(new DssPsm(address(joinA), address(newDaiJoin), address(vow)));
         vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
-        outputConduit.file(bytes32("psm"), psm);
+        outputConduit.file(bytes32("psm"), newPsm);
 
-        psm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
+        newPsm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
         vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
-        outputConduit.file(bytes32("psm"), psm);
+        outputConduit.file(bytes32("psm"), newPsm);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
@@ -353,19 +373,19 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
-        assertEq(dai.balanceOf(address(me)), 1000 ether);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
 
-        dai.transfer(address(outputConduit), 500 ether);
+        dai.transfer(address(outputConduit), 500 * WAD);
 
-        assertEq(dai.balanceOf(me), 500 ether);
-        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+        assertEq(dai.balanceOf(me), 500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_DIF_DECIMALS);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_CONVERSION_FACTOR);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -375,35 +395,32 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(usdx));
         vat.rely(address(join));
-        DssPsm psm = new DssPsm(address(join), address(daiJoin), address(vow));
-        join.rely(address(psm));
+        DssPsm newPsm = new DssPsm(address(join), address(daiJoin), address(vow));
+        join.rely(address(newPsm));
         join.deny(me);
 
-        vat.file(ilk, "line", rad(10000 ether));
-        vat.file("Line", rad(20000 ether));
-
         usdx.approve(address(join));
-        psm.sellGem(me, USDX_MINT_AMOUNT);
+        newPsm.sellGem(me, USDX_MINT_AMOUNT);
 
-        // change PSM
-        outputConduit.file("psm", address(psm));
+        // Change PSM
+        outputConduit.file("psm", address(newPsm));
 
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
-        assertEq(dai.balanceOf(address(me)), 2000 ether);
+        assertEq(dai.balanceOf(address(me)), 2_000 * WAD);
 
-        dai.transfer(address(outputConduit), 500 ether);
+        dai.transfer(address(outputConduit), 500 * WAD);
 
-        assertEq(dai.balanceOf(me), 1500 ether);
-        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+        assertEq(dai.balanceOf(me), 1_500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_DIF_DECIMALS);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_CONVERSION_FACTOR);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -414,20 +431,20 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
-        assertEq(dai.balanceOf(address(me)), 1000 ether);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
 
-        dai.transfer(address(outputConduit), 500 ether);
+        dai.transfer(address(outputConduit), 500 * WAD);
 
-        assertEq(dai.balanceOf(me), 500 ether);
-        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+        assertEq(dai.balanceOf(me), 500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 500 * USDX_BASE_UNIT);
-        outputConduit.push(500 ether);
+        outputConduit.push(500 * WAD);
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_DIF_DECIMALS);
+        assertEq(dai.balanceOf(address(outputConduit)), 0);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -438,12 +455,12 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
-        assertEq(dai.balanceOf(address(me)), 1000 ether);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
 
-        dai.transfer(address(outputConduit), 500 ether);
+        dai.transfer(address(outputConduit), 500 * WAD);
 
-        assertEq(dai.balanceOf(me), 500 ether);
-        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+        assertEq(dai.balanceOf(me), 500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 500 * USDX_BASE_UNIT);
@@ -457,20 +474,20 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testPushAmountWhenAlreadyHaveSomeDaiBalance() public {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
-        assertEq(dai.balanceOf(address(me)), 1000 ether);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
 
-        dai.transfer(address(outputConduit), 500 ether);
+        dai.transfer(address(outputConduit), 500 * WAD);
 
-        assertEq(dai.balanceOf(me), 500 ether);
-        assertEq(dai.balanceOf(address(outputConduit)), 500 ether);
+        assertEq(dai.balanceOf(me), 500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 400 * USDX_BASE_UNIT);
-        // push ionly 400 leave 100 dai in conduit
-        outputConduit.push(400 ether);
+        // Push only 400 DAI; leave 100 DAI in conduit
+        outputConduit.push(400 * WAD);
 
         assertEq(usdx.balanceOf(address(me)), 400 * USDX_BASE_UNIT);
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 100 ether, USDX_DAI_DIF_DECIMALS);
+        assertEq(dai.balanceOf(address(outputConduit)), 100 * WAD);
         assertEq(outputConduit.to(), address(0));
     }
 
@@ -480,27 +497,26 @@ contract RwaOutputConduit3Test is Test, DSMath {
         uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
         uint256 usdxBalance = usdx.balanceOf(me);
 
-        wad = bound(wad, 10**18, cDaiBalance);
+        wad = bound(wad, 1 * WAD, cDaiBalance);
 
         vm.expectEmit(true, true, false, false);
-        emit Push(address(me), wad / USDX_DAI_DIF_DECIMALS);
+        emit Push(address(me), wad / USDX_DAI_CONVERSION_FACTOR);
         outputConduit.push(wad);
 
-        assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_DIF_DECIMALS);
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_DIF_DECIMALS);
-        assertEq(outputConduit.to(), address(0));
+        assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_CONVERSION_FACTOR);
+        // We might lose some dust because of precision difference dai.decimals() > gem.decimals()
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_CONVERSION_FACTOR);
     }
 
-    function testExpectedGemAmountFuzz(uint256 wad) public {
-        psmA.file("tout", (1 * WAD) / 100); // add 1% fee
+    function testExpectedGemAmtFuzz(uint256 wad) public {
+        psm.file("tout", (1 * WAD) / 100); // add 1% fee
 
         assertEq(outputConduit.to(), me);
         dai.transfer(address(outputConduit), dai.balanceOf(me));
         uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
         uint256 usdxBalance = usdx.balanceOf(me);
 
-        wad = bound(wad, 10**18, cDaiBalance);
+        wad = bound(wad, 1 * WAD, cDaiBalance);
         uint256 expectedGem = outputConduit.expectedGemAmt(wad);
 
         vm.expectEmit(true, true, false, false);
@@ -508,17 +524,16 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.push(wad);
 
         assertEq(usdx.balanceOf(me), usdxBalance + expectedGem);
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
+        // We might lose some dust because of precision difference
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
             cDaiBalance - outputConduit.requiredDaiWad(expectedGem),
-            USDX_DAI_DIF_DECIMALS
+            USDX_DAI_CONVERSION_FACTOR
         );
-        assertEq(outputConduit.to(), address(0));
     }
 
-    function testRequiredDaiAmountFuzz(uint256 amt) public {
-        psmA.file("tout", (1 * WAD) / 100); // add 1% fee
+    function testRequiredDaiWadFuzz(uint256 amt) public {
+        psm.file("tout", (1 * WAD) / 100); // add 1% fee
 
         assertEq(outputConduit.to(), me);
         uint256 daiBalance = dai.balanceOf(me);
@@ -536,9 +551,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.push(requiredDai);
 
         assertEq(usdx.balanceOf(me), usdxBalance + amt);
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - requiredDai, USDX_DAI_DIF_DECIMALS);
-        assertEq(outputConduit.to(), address(0));
+        // We might lose some dust because of precision difference
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - requiredDai, USDX_DAI_CONVERSION_FACTOR);
     }
 
     function testRevertOnPushAmountMoreThenBalance() public {
@@ -551,7 +565,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testRevertOnInsufficientSwapGemAmount() public {
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
-        assertEq(dai.balanceOf(address(me)), 1000 ether);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
 
         dai.transfer(address(outputConduit), 500);
 
@@ -564,37 +578,39 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testRevertOnInsufficientGemAmountInPsm() public {
-        dai.mint(me, 100 ether);
+        // Mint additional 100 DAI, so the total balance is 1_100 DAI
+        dai.mint(me, 100 * WAD);
 
         assertEq(usdx.balanceOf(me), 0);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
-        assertEq(dai.balanceOf(address(me)), 1100 ether);
+        assertEq(dai.balanceOf(address(me)), 1_100 * WAD);
 
-        dai.transfer(address(outputConduit), 1100 ether);
+        dai.transfer(address(outputConduit), 1_100 * WAD);
 
-        assertEq(dai.balanceOf(address(outputConduit)), 1100 ether);
+        assertEq(dai.balanceOf(address(outputConduit)), 1_100 * WAD);
 
-        vat.mint(address(daiJoin), rad(1100 ether));
+        vat.mint(address(daiJoin), rad(1_100 * WAD));
 
         vm.expectRevert();
-        // It will revert on vat.frob()
-        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink = 1000 and dink = -1100
+        // It will revert on vat.frob():
+        //      urn.ink = _add(urn.ink, dink);
+        // _add method will revert with empty message because ink = 1000 and dink = -1100
         outputConduit.push();
 
-        assertEq(dai.balanceOf(address(outputConduit)), 1100 ether);
+        assertEq(dai.balanceOf(address(outputConduit)), 1_100 * WAD);
     }
 
     function testQuit() public {
         assertEq(dai.balanceOf(outputConduit.quitTo()), 0);
 
-        dai.transfer(address(outputConduit), 1000 ether);
+        dai.transfer(address(outputConduit), 1_000 * WAD);
 
         assertEq(outputConduit.quitTo(), address(testUrn));
-        assertEq(dai.balanceOf(address(outputConduit)), 1000 ether);
+        assertEq(dai.balanceOf(address(outputConduit)), 1_000 * WAD);
 
         outputConduit.quit();
 
-        assertEq(dai.balanceOf(outputConduit.quitTo()), 1000 ether);
+        assertEq(dai.balanceOf(outputConduit.quitTo()), 1_000 * WAD);
     }
 
     function testQuitAmountFuzz(uint256 wad) public {
@@ -628,28 +644,26 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testYank() public {
-        uint256 USDX_AMOUNT = 100 * USDX_BASE_UNIT;
-
-        usdx.mint(USDX_AMOUNT);
-        usdx.transfer(address(outputConduit), USDX_AMOUNT);
+        usdx.mint(100 * USDX_BASE_UNIT);
+        usdx.transfer(address(outputConduit), 100 * USDX_BASE_UNIT);
         uint256 usdxBalance = usdx.balanceOf(me);
 
-        assertEq(usdx.balanceOf(address(outputConduit)), USDX_AMOUNT);
+        assertEq(usdx.balanceOf(address(outputConduit)), 100 * USDX_BASE_UNIT);
 
         vm.expectEmit(true, true, false, false);
-        emit Yank(address(usdx), address(me), USDX_AMOUNT);
+        emit Yank(address(usdx), address(me), 100 * USDX_BASE_UNIT);
 
-        outputConduit.yank(address(usdx), me, USDX_AMOUNT);
-        assertEq(usdx.balanceOf(me), usdxBalance + USDX_AMOUNT);
+        outputConduit.yank(address(usdx), me, 100 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(me), usdxBalance + 100 * USDX_BASE_UNIT);
         assertEq(usdx.balanceOf(address(outputConduit)), 0);
     }
 
     function ray(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**9;
+        return wad * (RAY / WAD);
     }
 
     function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10**27;
+        return wad * RAY;
     }
 }
 

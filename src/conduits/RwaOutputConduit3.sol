@@ -265,6 +265,12 @@ contract RwaOutputConduit3 {
                 GemJoinAbstract(PsmAbstract(data).gemJoin()).gem() == address(gem),
                 "RwaOutputConduit3/wrong-gem-for-psm"
             );
+
+            // Revoke approval for old PSM
+            dai.approve(address(psm), 0);
+            // Give unlimited approval to PSM
+            dai.approve(data, type(uint256).max);
+
             psm = PsmAbstract(data);
         } else {
             revert("RwaOutputConduit3/unrecognised-param");

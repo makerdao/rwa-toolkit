@@ -297,6 +297,45 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
     }
 
+    function testPushAfterChangePsm() public {
+        // Init new PSM
+        vat.init(bytes32("USDX2"));
+
+        AuthGemJoin5 join = new AuthGemJoin5(address(vat), bytes32("USDX2"), address(usdx));
+        vat.rely(address(join));
+        DssPsm psm = new DssPsm(address(join), address(daiJoin), address(vow));
+        join.rely(address(psm));
+        join.deny(me);
+
+        spot.file(bytes32("USDX2"), bytes32("pip"), address(pip));
+        spot.file(bytes32("USDX2"), bytes32("mat"), ray(1 ether));
+        spot.poke(bytes32("USDX2"));
+
+        vat.file(bytes32("USDX2"), "line", rad(1000 ether));
+
+        // change PSM
+        inputConduit.file("psm", address(psm));
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(join)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(dai.balanceOf(testUrn), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 ether);
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(join)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
+    }
+
     function testPushAmountWhenHaveSomeDaiBalanceGetExactAmount() public {
         dai.mint(address(inputConduit), 100 ether);
         assertEq(dai.balanceOf(address(inputConduit)), 100 ether);

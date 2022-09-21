@@ -444,6 +444,8 @@ contract RwaOutputConduit3Test is Test, DSMath {
     }
 
     function testExpectedGemAmountFuzz(uint256 wad) public {
+        psmA.file("tout", (1 * WAD) / 100); // add 1% fee
+
         assertEq(outputConduit.to(), me);
         dai.transfer(address(outputConduit), dai.balanceOf(me));
         uint256 cDaiBalance = dai.balanceOf(address(outputConduit));

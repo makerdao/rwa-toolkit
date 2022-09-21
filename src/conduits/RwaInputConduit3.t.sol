@@ -408,8 +408,10 @@ contract RwaInputConduit3Test is Test, DSMath {
     }
 
     function testRequiredGemAmountFuzz(uint256 wad) public {
+        psmA.file("tin", (1 * WAD) / 100); // add 1% fee
+
         uint256 myGemBlance = usdx.balanceOf(me);
-        wad = bound(wad, 10**18, gemToDai(myGemBlance));
+        wad = bound(wad, 10**18, inputConduit.expectedDaiWad(myGemBlance));
 
         uint256 amt = inputConduit.requiredGemAmt(wad);
         usdx.transfer(address(inputConduit), amt);

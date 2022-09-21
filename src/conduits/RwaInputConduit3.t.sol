@@ -423,6 +423,22 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertApproxEqAbs(dai.balanceOf(address(testUrn)), wad, USDX_DAI_DIF_DECIMALS);
     }
 
+    function testExpectedDaiWadFuzz(uint256 amt) public {
+        psmA.file("tin", (1 * WAD) / 100); // add 1% fee
+
+        uint256 myGemBlance = usdx.balanceOf(me);
+        amt = bound(amt, 10 * USDX_BASE_UNIT, myGemBlance);
+
+        uint256 expectedWad = inputConduit.expectedDaiWad(amt);
+        usdx.transfer(address(inputConduit), amt);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), expectedWad);
+        inputConduit.push(amt);
+
+        assertApproxEqAbs(dai.balanceOf(address(testUrn)), expectedWad, USDX_DAI_DIF_DECIMALS);
+    }
+
     function testQuit() public {
         usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
 

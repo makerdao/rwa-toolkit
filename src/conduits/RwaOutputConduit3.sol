@@ -266,9 +266,9 @@ contract RwaOutputConduit3 {
                 "RwaOutputConduit3/wrong-gem-for-psm"
             );
 
-            // Revoke approval for old PSM
+            // Revoke approval for the old PSM
             dai.approve(address(psm), 0);
-            // Give unlimited approval to PSM
+            // Give unlimited approval to the new PSM
             dai.approve(data, type(uint256).max);
 
             psm = PsmAbstract(data);

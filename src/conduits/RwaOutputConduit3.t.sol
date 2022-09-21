@@ -69,6 +69,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
     event Yank(address indexed token, address indexed usr, uint256 amt);
+    event Pick(address indexed who);
 
     function setUpMCDandPSM() internal {
         me = address(this);
@@ -331,11 +332,21 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.pick(vm.addr(1));
     }
 
-    function testRevertOnPickZeroAddress() public {
-        outputConduit.kiss(address(0));
+    function testPick() public {
+        // pick address
+        address who = vm.addr(2);
+        outputConduit.kiss(who);
 
-        vm.expectRevert("RwaOutputConduit3/not-bud");
-        outputConduit.pick(vm.addr(1));
+        vm.expectEmit(true, false, false, false);
+        emit Pick(who);
+        outputConduit.pick(who);
+        assertEq(outputConduit.to(), who);
+
+        // pick zero address
+        vm.expectEmit(true, false, false, false);
+        emit Pick(address(0));
+        outputConduit.pick(address(0));
+        assertEq(outputConduit.to(), address(0));
     }
 
     function testPush() public {

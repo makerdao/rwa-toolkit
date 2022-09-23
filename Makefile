@@ -10,8 +10,8 @@ clean:; forge clean
 update:; forge update
 # Build & test
 build:; forge build
-test:; forge test --no-match-path "**.integration.t.sol" # --ffi # enable if you need the `ffi` cheat code on HEVM
-test-integration:; forge test --fork-url -vvv --match-path "**.integration.t.sol"
+test:; forge test --no-match-path "**.integration.t.sol" -vvv # --ffi # enable if you need the `ffi` cheat code on HEVM
+test-integration:; forge test --match-path "**.integration.t.sol" --fork-url ${ETH_RPC_URL} -vvv
 
 flatten:; forge flatten --source-file ${file}
 

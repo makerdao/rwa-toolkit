@@ -58,7 +58,7 @@ contract RwaCageSettlementTest is Test {
         _mint(gem, sender, gemSupply);
 
         // Mint enough coins into the settlements's balance
-        uint256 requiredCoinAmt = settlement.totalRequiredDeposit();
+        uint256 requiredCoinAmt = settlement.gemToCoin(gem.totalSupply());
         _mint(coin, address(settlement), requiredCoinAmt);
 
         // Approve the settlement to spend RWA tokens on sender's behalf
@@ -151,7 +151,7 @@ contract RwaCageSettlementTest is Test {
         _parametricSetUp(coinDecimals, gemDecimals, _gemPrice);
 
         // Up to 100_000_000 units of coin
-        _coinAmt = bound(_coinAmt, 1, settlement.totalRequiredDeposit());
+        _coinAmt = bound(_coinAmt, 1, settlement.gemToCoin(gem.totalSupply()));
         _mint(coin, sender, _coinAmt);
 
         Balances memory pBalances = Balances({
@@ -299,7 +299,7 @@ contract RwaCageSettlementTest is Test {
         uint256 redeemGems = gem.balanceOf(sender);
 
         vm.expectEmit(true, false, false, true);
-        emit Redeem(sender, redeemGems, settlement.totalRequiredDeposit());
+        emit Redeem(sender, redeemGems, settlement.gemToCoin(gem.totalSupply()));
 
         vm.prank(sender);
         settlement.redeem(redeemGems);
@@ -390,19 +390,6 @@ contract RwaCageSettlementTest is Test {
         uint256 totalRedeemed = settlement.totalRedeemed();
 
         assertEq(totalRedeemed, redeemGems, "totalRedeemed: invalid result");
-    }
-
-    function testGetRemainingToRedeem() public {
-        _setUp();
-
-        uint256 redeemGems = gem.balanceOf(sender) / 4;
-
-        vm.prank(sender);
-        settlement.redeem(redeemGems);
-
-        uint256 remainingToRedeem = settlement.remainingToRedeem();
-
-        assertEq(remainingToRedeem, gem.totalSupply() - redeemGems, "remainingToRedeem: invalid result");
     }
 
     function testGetCurrentlyDeposited() public {

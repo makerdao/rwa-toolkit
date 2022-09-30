@@ -44,7 +44,7 @@ contract RwaCageSettlement {
     /// @notice The price in Dai for each unit of `_gem`, with 10**18 precision.
     uint256 public immutable price;
 
-    /// @dev The decimaal conversion factor from gem to coin units.
+    /// @dev The decimal conversion factor from gem to coin units.
     uint256 internal immutable conversionFactor;
 
     /**
@@ -126,27 +126,11 @@ contract RwaCageSettlement {
     //////////////////////////////////////*/
 
     /**
-     * @notice Returns the total amount of coins required to redeem all existing gems.
-     * @return coinAmt The amount of coins.
-     */
-    function totalRequiredDeposit() public view returns (uint256 coinAmt) {
-        return gemToCoin(gem.totalSupply());
-    }
-
-    /**
      * @notice Returns the amount of coins currently deposited in this contract.
      * @return coinAmt The coin balance of this contract.
      */
     function currentlyDeposited() public view returns (uint256 coinAmt) {
         return coin.balanceOf(address(this));
-    }
-
-    /**
-     * @notice Returns the amount of coins required to redeem all gems that have not been redeemed yet.
-     * @return coinAmt The amount of coins.
-     */
-    function remainingRequiredDeposit() public view returns (uint256 coinAmt) {
-        return gemToCoin(remainingToRedeem());
     }
 
     /**
@@ -172,16 +156,6 @@ contract RwaCageSettlement {
      */
     function totalRedeemed() public view returns (uint256 gemAmt) {
         return gem.balanceOf(address(this));
-    }
-
-    /**
-     * @notice Returns the amount of gems still pending redemption.
-     * @return gemAmt The amount of gems not redeemed yet.
-     */
-    function remainingToRedeem() public view returns (uint256 gemAmt) {
-        // It's impossible that the gem balance of this contract to be greater
-        // than its total supply, so we don't need overflow checks here.
-        return gem.totalSupply() - totalRedeemed();
     }
 
     /*//////////////////////////////////////

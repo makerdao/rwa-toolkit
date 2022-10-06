@@ -25,8 +25,8 @@ contract RwaCageSettlementTest is Test {
     uint256 internal constant WAD = 10**18;
 
     RwaCageSettlement internal settlement;
-    TestCoin internal gem;
-    TestCoin internal coin;
+    IERC20 internal gem;
+    IERC20 internal coin;
     address internal sender = address(0x1337);
 
     // Regular test parameters
@@ -49,8 +49,17 @@ contract RwaCageSettlementTest is Test {
         require(_gemDecimals <= 27, "gemDecimals too big");
         require(_gemPrice >= 1 * WAD && _gemPrice <= 10**15 * WAD, "gemPrice out of bounds");
 
-        coin = new TestCoin("USDX", uint8(_coinDecimals));
-        gem = new TestCoin("RWA00X", uint8(_gemDecimals));
+        // Make sure to use both standard and non-confirming tokens as `coin`
+        uint256 coinImpl = (_coinDecimals + _gemDecimals + _gemPrice) % 3;
+        if (coinImpl == 0) {
+            coin = IERC20(address(new StandardToken("USDX", uint8(_coinDecimals))));
+        } else if (coinImpl == 1) {
+            coin = IERC20(address(new NoRevertToken("USDX", uint8(_coinDecimals))));
+        } else {
+            coin = IERC20(address(new MissingReturnsToken("USDX", uint8(_coinDecimals))));
+        }
+
+        gem = IERC20(address(new StandardToken("RWA00X", uint8(_gemDecimals))));
         settlement = new RwaCageSettlement(address(coin), address(gem), _gemPrice);
 
         // Mint the gem into the sender's balance
@@ -255,14 +264,14 @@ contract RwaCageSettlementTest is Test {
 
     function testRevertConstructorWhenTokensHaveInvalidDecimals() public {
         // Coins with decimals < 2 are not supported
-        TestCoin coin0 = new TestCoin("USDX", 0);
-        TestCoin coin8 = new TestCoin("USDX", 8);
+        StandardToken coin0 = new StandardToken("USDX", 0);
+        StandardToken coin8 = new StandardToken("USDX", 8);
 
         // Gems with decimals > 27 are not supported
-        TestCoin gem30 = new TestCoin("RWA00X", 30);
+        StandardToken gem30 = new StandardToken("RWA00X", 30);
         // Gems with decimals < 2 are not supported
-        TestCoin gem0 = new TestCoin("RWA00X", 0);
-        TestCoin gem2 = new TestCoin("RWA00X", 2);
+        StandardToken gem0 = new StandardToken("RWA00X", 0);
+        StandardToken gem2 = new StandardToken("RWA00X", 2);
 
         vm.expectRevert(bytes("RwaCageSettlement/gem-decimals-out-of-bounds"));
         settlement = new RwaCageSettlement(address(coin8), address(gem30), DEFAULT_GEM_PRICE);
@@ -279,14 +288,14 @@ contract RwaCageSettlementTest is Test {
     }
 
     function testRevertConstructorWhenPriceIsZero() public {
-        coin = new TestCoin("USDX", DEFAULT_COIN_DECIMALS);
+        coin = IERC20(address(new StandardToken("USDX", DEFAULT_COIN_DECIMALS)));
 
         vm.expectRevert(bytes("RwaCageSettlement/price-out-of-bounds"));
         settlement = new RwaCageSettlement(address(coin), address(gem), 0);
     }
 
     function testRevertConstructorWhenPriceIsTooHigh() public {
-        coin = new TestCoin("USDX", DEFAULT_COIN_DECIMALS);
+        coin = IERC20(address(new StandardToken("USDX", DEFAULT_COIN_DECIMALS)));
 
         vm.expectRevert(bytes("RwaCageSettlement/price-out-of-bounds"));
         // Max price is 10**(15+18)=10**33, which means 1 Trillion Dai
@@ -326,7 +335,7 @@ contract RwaCageSettlementTest is Test {
 
         uint256 redeemGems = gem.balanceOf(sender);
 
-        vm.expectRevert(bytes("ds-token-insufficient-balance"));
+        vm.expectRevert(bytes("RwaCageSettlement/coin-transfer-failed"));
         vm.prank(sender);
         settlement.redeem(redeemGems);
     }
@@ -362,7 +371,7 @@ contract RwaCageSettlementTest is Test {
         address otherSender = address(0xde4d);
         _approve(address(coin), otherSender, address(settlement), type(uint256).max);
 
-        vm.expectRevert(bytes("ds-token-insufficient-balance"));
+        vm.expectRevert(bytes("RwaCageSettlement/coin-transfer-failed"));
         vm.prank(otherSender);
         settlement.deposit(10**16);
     }
@@ -375,7 +384,7 @@ contract RwaCageSettlementTest is Test {
         uint256 mintedCoins = settlement.gemToCoin(10_000 * WAD);
         _mint(coin, sender, mintedCoins);
 
-        vm.expectRevert(bytes("ds-token-insufficient-approval"));
+        vm.expectRevert(bytes("RwaCageSettlement/coin-transfer-failed"));
         vm.prank(sender);
         settlement.deposit(mintedCoins);
     }
@@ -409,7 +418,7 @@ contract RwaCageSettlementTest is Test {
     }
 
     function _mint(
-        DSToken token,
+        IERC20 token,
         address to,
         uint256 coinAmt
     ) internal {
@@ -426,13 +435,12 @@ contract RwaCageSettlementTest is Test {
         address to,
         uint256 allowance
     ) internal {
-        DSToken token = DSToken(_token);
-
         vm.prank(from);
-        token.approve(address(to), allowance);
+        (bool ok, ) = _token.call(abi.encodeWithSelector(IERC20(_token).approve.selector, to, allowance));
 
+        assertTrue(ok, "_approve: approve failed");
         // Sanity check
-        assertEq(token.allowance(from, to), allowance, "_approve: approve failed");
+        assertEq(IERC20(_token).allowance(from, to), allowance, "_approve: approve failed");
     }
 
     event Redeem(address indexed sender, uint256 gemWad, uint256 coinAmt);
@@ -444,8 +452,163 @@ contract RwaCageSettlementTest is Test {
     }
 }
 
-contract TestCoin is DSToken {
+interface IERC20 {
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address) external view returns (uint256);
+
+    function transfer(address, uint256) external;
+
+    function allowance(address, address) external view returns (uint256);
+
+    function approve(address, uint256) external;
+
+    function transferFrom(
+        address,
+        address,
+        uint256
+    ) external;
+
+    function mint(uint256) external;
+
+    function mint(address, uint256) external;
+}
+
+contract StandardToken is DSToken {
     constructor(string memory _symbol, uint8 _decimals) public DSToken(_symbol) {
         decimals = _decimals;
+    }
+}
+
+contract NoRevertToken {
+    // --- ERC20 Data ---
+    string public symbol;
+    uint8 public immutable decimals;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Approval(address indexed src, address indexed guy, uint256 wad);
+    event Transfer(address indexed src, address indexed dst, uint256 wad);
+    event Mint(address indexed usr, uint256 wad);
+
+    // --- Init ---
+    constructor(string memory _symbol, uint8 _decimals) public {
+        symbol = _symbol;
+        decimals = _decimals;
+    }
+
+    // --- Token ---
+    function transfer(address dst, uint256 wad) external returns (bool) {
+        return transferFrom(msg.sender, dst, wad);
+    }
+
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 wad
+    ) public virtual returns (bool) {
+        if (balanceOf[src] < wad) return false; // insufficient src bal
+        if (balanceOf[dst] >= (type(uint256).max - wad)) return false; // dst bal too high
+
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
+            if (allowance[src][msg.sender] < wad) return false; // insufficient allowance
+            allowance[src][msg.sender] = allowance[src][msg.sender] - wad;
+        }
+
+        balanceOf[src] = Math.sub(balanceOf[src], wad);
+        balanceOf[dst] = Math.add(balanceOf[dst], wad);
+
+        emit Transfer(src, dst, wad);
+        return true;
+    }
+
+    function approve(address usr, uint256 wad) external virtual returns (bool) {
+        allowance[msg.sender][usr] = wad;
+        emit Approval(msg.sender, usr, wad);
+        return true;
+    }
+
+    function mint(uint256 wad) external {
+        mint(msg.sender, wad);
+    }
+
+    function mint(address usr, uint256 wad) public virtual {
+        balanceOf[usr] = Math.add(balanceOf[usr], wad);
+        totalSupply = Math.add(totalSupply, wad);
+        emit Mint(usr, wad);
+    }
+}
+
+contract MissingReturnsToken {
+    // --- ERC20 Data ---
+    string public symbol;
+    uint8 public immutable decimals;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Approval(address indexed src, address indexed guy, uint256 wad);
+    event Transfer(address indexed src, address indexed dst, uint256 wad);
+    event Mint(address indexed usr, uint256 wad);
+
+    // --- Init ---
+    constructor(string memory _symbol, uint8 _decimals) public {
+        symbol = _symbol;
+        decimals = _decimals;
+    }
+
+    // --- Token ---
+    function transfer(address dst, uint256 wad) external {
+        transferFrom(msg.sender, dst, wad);
+    }
+
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 wad
+    ) public virtual {
+        require(balanceOf[src] >= wad, "insufficient-balance");
+
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
+            require(allowance[src][msg.sender] >= wad, "insufficient-allowance");
+            allowance[src][msg.sender] = allowance[src][msg.sender] - wad;
+        }
+
+        balanceOf[src] = Math.sub(balanceOf[src], wad);
+        balanceOf[dst] = Math.add(balanceOf[dst], wad);
+
+        emit Transfer(src, dst, wad);
+    }
+
+    function approve(address usr, uint256 wad) external virtual {
+        allowance[msg.sender][usr] = wad;
+        emit Approval(msg.sender, usr, wad);
+    }
+
+    function mint(uint256 wad) external {
+        mint(msg.sender, wad);
+    }
+
+    function mint(address usr, uint256 wad) public virtual {
+        balanceOf[usr] = Math.add(balanceOf[usr], wad);
+        totalSupply = Math.add(totalSupply, wad);
+        emit Mint(usr, wad);
+    }
+}
+
+library Math {
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "Math/add-overflow");
+    }
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "Math/sub-underflow");
+    }
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
     }
 }

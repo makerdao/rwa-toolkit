@@ -104,8 +104,8 @@ contract RwaCageSettlement {
         // burn the gem tokens without giving the caller anything back.
         require(coinAmt > 0, "RwaCageSettlement/too-few-gems");
 
-        require(gem.transferFrom(msg.sender, address(this), gemAmt), "RwaCageSettlement/gem-transfer-failed");
-        require(coin.transfer(msg.sender, coinAmt), "RwaCageSettlement/coin-transfer-failed");
+        gem.transferFrom(msg.sender, address(this), gemAmt);
+        _safeCoinTransfer(msg.sender, coinAmt, "RwaCageSettlement/coin-transfer-failed");
 
         emit Redeem(msg.sender, gemAmt, coinAmt);
     }
@@ -116,9 +116,47 @@ contract RwaCageSettlement {
      * @param coinAmt The amount of coins to deposit.
      */
     function deposit(uint256 coinAmt) external {
-        require(coin.transferFrom(msg.sender, address(this), coinAmt), "RwaCageSettlement/coin-transfer-failed");
+        _safeCoinTransferFrom(msg.sender, address(this), coinAmt, "RwaCageSettlement/coin-transfer-failed");
 
         emit Deposit(msg.sender, coinAmt);
+    }
+
+    /**
+     * @dev Handles `transfer` for coin tokens with non-standard ERC-20 implementations.
+     * See https://github.com/d-xo/weird-erc20
+     * @param to The destination address.
+     * @param amount The amount to be transfered.
+     * @param errMsg The message to be used in the `revert` statement if the transfer fails.
+     */
+    function _safeCoinTransfer(
+        address to,
+        uint256 amount,
+        string memory errMsg
+    ) internal {
+        (bool success, bytes memory result) = address(coin).call(
+            abi.encodeWithSelector(coin.transfer.selector, to, amount)
+        );
+        require(success && (result.length == 0 || abi.decode(result, (bool))), errMsg);
+    }
+
+    /**
+     * @dev Handles `transferFrom` for coin tokens with non-standard ERC-20 implementations.
+     * See https://github.com/d-xo/weird-erc20
+     * @param from The origin address.
+     * @param to The destination address.
+     * @param amount The amount to be transfered.
+     * @param errMsg The message to be used in the `revert` statement if the transfer fails.
+     */
+    function _safeCoinTransferFrom(
+        address from,
+        address to,
+        uint256 amount,
+        string memory errMsg
+    ) internal {
+        (bool success, bytes memory result) = address(coin).call(
+            abi.encodeWithSelector(coin.transferFrom.selector, from, to, amount)
+        );
+        require(success && (result.length == 0 || abi.decode(result, (bool))), errMsg);
     }
 
     /*//////////////////////////////////////

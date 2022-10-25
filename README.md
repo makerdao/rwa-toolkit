@@ -10,7 +10,7 @@
 - `RwaOutputConduit3`: variation of `RwaOutputConduit` for swapping DAI to GEM through a PSM.
 - `RwaInputConduit`: repays DAI.
 - `RwaInputConduit2`: variation of `RwaInputConduit` with an whitelist to control permissions to repay DAI.
-- `RwaInputConduit3`: variation of `RwaInputConduit` for swapping GEM to DAI through a PSM.
+- `RwaInputConduit3`: variation of `RwaInputConduit` for swapping GEM to DAI through a PSM. Push is permissioned to avoid griefing by pushing to PSM when the PSM is empty or high slippage is expected. With this approach, the borrower decides when to push and at which rate according to PSM liquidity.
 - `RwaToken`: represents the RWA collateral in the system.
 - `RwaTokenFactory`: factory of `RwaToken`s.
 - `RwaJar`: facilitates paying stability fess directly into the DSS surplus buffer.

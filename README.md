@@ -12,7 +12,7 @@
 - `RwaInputConduit`: repays DAI.
 - `RwaInputConduit2`: variation of `RwaInputConduit` with an whitelist to control permissions to repay DAI.
 - `RwaInputConduit3`: variation of `RwaInputConduit` for swapping GEM to DAI through a PSM.
-- `RwaOutputConduit4`: variation of `RwaIntputConduit` for swapping DAI to GEM through a PSM, with a permissionless `push`.
+- `RwaInputConduit4`: variation of `RwaIntputConduit` for swapping DAI to GEM through a PSM, with a permissionless `push`.
 - `RwaToken`: represents the RWA collateral in the system.
 - `RwaTokenFactory`: factory of `RwaToken`s.
 - `RwaJar`: facilitates paying stability fess directly into the DSS surplus buffer.

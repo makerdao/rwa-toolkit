@@ -25,22 +25,23 @@ import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
  * @author Henrique Barcelos <henrique@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
+ *  - `auth`ed methods can be made permissionless by calling `rely(address(0))`.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - `push()` can be made permissionless by calling `mate(address(0))`.
  */
 contract RwaInputConduit2 {
-    /// @dev This is declared here so the storage layout lines up with RwaInputConduit.
-    DSTokenAbstract private __unused_gov;
     /// @notice Dai token contract address
-    DSTokenAbstract public dai;
-    /// @notice RWA urn contract address
-    address public to;
+    DSTokenAbstract public immutable dai;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
+
+    /// @notice RWA urn contract address
+    address public to;
 
     /**
      * @notice `usr` was granted admin access.
@@ -63,6 +64,12 @@ contract RwaInputConduit2 {
      */
     event Hate(address indexed usr);
     /**
+     * @notice A contract parameter was updated.
+     * @param what The changed parameter name. The supported values are: "to".
+     * @param data The new value of the parameter.
+     */
+    event File(bytes32 indexed what, address data);
+    /**
      * @notice `wad` amount of Dai was pushed to `to`
      * @param to The RwaUrn address
      * @param wad The amount of Dai
@@ -83,7 +90,7 @@ contract RwaInputConduit2 {
     }
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaInputConduit2/not-authorized");
+        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaInputConduit2/not-authorized");
         _;
     }
 
@@ -124,11 +131,26 @@ contract RwaInputConduit2 {
     }
 
     /**
+     * @notice Updates a contract parameter.
+     * @param what The changed parameter name. `"to"
+     * @param data The new value of the parameter.
+     */
+    function file(bytes32 what, address data) external auth {
+        if (what == "to") {
+            to = data;
+        } else {
+            revert("RwaInputConduit2/unrecognised-param");
+        }
+
+        emit File(what, data);
+    }
+
+    /**
      * @notice Pushes contract Dai balance into RwaUrn address.
      * @dev `msg.sender` must first receive push acess through mate().
      */
     function push() external {
-        require(may[msg.sender] == 1, "RwaInputConduit2/not-mate");
+        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaInputConduit2/not-mate");
 
         uint256 balance = dai.balanceOf(address(this));
         dai.transfer(to, balance);

@@ -29,11 +29,11 @@ import {Vow} from "dss/vow.sol";
 import {GemJoin, DaiJoin} from "dss/join.sol";
 import {Dai} from "dss/dai.sol";
 
-import {RwaOutputConduit3} from "./RwaOutputConduit3.sol";
-
 import {DssPsm} from "dss-psm/psm.sol";
 import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 import {AuthGemJoin} from "dss-psm/join-auth.sol";
+
+import {RwaOutputConduit3} from "./RwaOutputConduit3.sol";
 
 contract RwaOutputConduit3Test is Test, DSMath {
     address me;

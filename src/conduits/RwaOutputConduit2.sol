@@ -28,24 +28,22 @@ import {DSTokenAbstract} from "dss-interfaces/dapp/DSTokenAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - `push()` can be made permissionless by calling `mate(address(0))`.
+ *  - `pick()` can be made permissionless by calling `hope(address(0))`.
  */
 contract RwaOutputConduit2 {
+    /// @notice Dai token contract address
+    DSTokenAbstract public immutable dai;
+
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
     /// @notice Addresses with operator access on this contract. `can[usr]`
     mapping(address => uint256) public can;
-
-    /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
-    DSTokenAbstract private __unused_gov;
-    /// @notice Dai token contract address
-    DSTokenAbstract public dai;
-    /// @notice Dai output address
-    address public to;
-
-    /// @dev This is declared here so the storage layout lines up with RwaOutputConduit.
-    mapping(address => uint256) private __unused_bud;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
+
+    /// @notice Dai output address
+    address public to;
 
     /**
      * @notice `usr` was granted admin access.
@@ -100,7 +98,7 @@ contract RwaOutputConduit2 {
     }
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaOutputConduit2/not-authorized");
+        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaOutputConduit2/not-authorized");
         _;
     }
 
@@ -163,17 +161,17 @@ contract RwaOutputConduit2 {
      * @param who Recipient Dai address.
      */
     function pick(address who) public {
-        require(can[msg.sender] == 1, "RwaOutputConduit2/not-operator");
+        require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaOutputConduit2/not-operator");
         to = who;
         emit Pick(who);
     }
 
     /**
      * @notice Pushes contract Dai balance to the recipient address.
-     * @dev `msg.sender` must have been `mate`d and `to` must have been `pick`ed.
+     * @dev `msg.sender` or `address(0)` must have been `mate`d and `to` must have been `pick`ed.
      */
     function push() external {
-        require(may[msg.sender] == 1, "RwaOutputConduit2/not-mate");
+        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaOutputConduit2/not-mate");
         require(to != address(0), "RwaOutputConduit2/to-not-picked");
         uint256 balance = dai.balanceOf(address(this));
         address recipient = to;

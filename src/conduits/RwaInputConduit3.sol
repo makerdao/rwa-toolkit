@@ -26,22 +26,24 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
+ *  - `auth`ed methods can be made permissionless by calling `rely(address(0))`.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - Requires DAI, GEM and PSM addresses in the constructor.
- *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
+ *  - `push()` can be made permissionless by calling `mate(address(0))`.
  *  - The `push()` method swaps entire GEM balance to DAI using PSM.
  *  - THe `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
+ *  - Requires DAI, GEM and PSM addresses in the constructor.
+ *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The `quit()` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `quit(uint256)` method allows moving the specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file(bytes32, address)` method allows updating `quitTo`, `to`, `psm` addresses. It can be called only by the admin.
  */
 contract RwaInputConduit3 {
-    /// @notice PSM GEM token contract address.
-    GemAbstract public immutable gem;
     /// @notice DAI token contract address.
     DaiAbstract public immutable dai;
+    /// @notice PSM GEM token contract address.
+    GemAbstract public immutable gem;
     /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConversionFactor;
 
@@ -104,12 +106,12 @@ contract RwaInputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
+        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaInputConduit3/not-authorized");
         _;
     }
 
     modifier onlyMate() {
-        require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
+        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaInputConduit3/not-mate");
         _;
     }
 

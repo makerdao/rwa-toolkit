@@ -29,10 +29,12 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - `push()` can be made permissionless by calling `mate(address(0))`.
+ *  - The `push()` method swaps all DAI balance of the contract to GEM using the PSM.
+ *  - The `push(uint256)` method swaps specified amount of DAI to GEM using the PSM.
+ *  - `pick()` can be made permissionless by calling `hope(address(0))`.
  *  - Requires DAI, GEM and PSM addresses in the constructor.
  *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
- *  - The `push()` method swaps entire DAI balance to GEM using PSM.
- *  - THe `push(uint256)` method swaps specified amount of DAI to GEM using PSM.
  *  - The `quit()` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `quit(uint256)` method allows moving the specified amount of DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file` method allows updating `quitTo`, `psm` addresses. It can be called only by the admin.
@@ -133,12 +135,12 @@ contract RwaOutputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaOutputConduit3/not-authorized");
+        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaOutputConduit3/not-authorized");
         _;
     }
 
     modifier onlyMate() {
-        require(may[msg.sender] == 1, "RwaOutputConduit3/not-mate");
+        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaOutputConduit3/not-mate");
         _;
     }
 
@@ -285,7 +287,7 @@ contract RwaOutputConduit3 {
      * @dev `who` address should have been whitelisted using `kiss`.
      */
     function pick(address who) external {
-        require(can[msg.sender] == 1, "RwaOutputConduit3/not-operator");
+        require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaOutputConduit3/not-operator");
         require(bud[who] == 1 || who == address(0), "RwaOutputConduit3/not-bud");
         to = who;
         emit Pick(who);
@@ -297,7 +299,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Swaps the DAI balance of this contract into GEM through the PSM and push it into the recipient address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      */
     function push() external onlyMate {
         _doPush(dai.balanceOf(address(this)));
@@ -305,7 +307,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function push(uint256 wad) external onlyMate {
@@ -314,7 +316,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out any DAI balance to `quitTo` address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      */
     function quit() external onlyMate {
         _doQuit(dai.balanceOf(address(this)));
@@ -322,7 +324,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out the specified amount of DAI to the `quitTo` address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function quit(uint256 wad) external onlyMate {

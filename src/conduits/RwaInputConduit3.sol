@@ -26,7 +26,6 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
- *  - `auth`ed methods can be made permissionless by calling `rely(address(0))`.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
@@ -106,7 +105,7 @@ contract RwaInputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaInputConduit3/not-authorized");
+        require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
         _;
     }
 

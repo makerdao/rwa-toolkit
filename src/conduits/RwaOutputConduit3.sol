@@ -135,7 +135,7 @@ contract RwaOutputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaOutputConduit3/not-authorized");
+        require(wards[msg.sender] == 1, "RwaOutputConduit3/not-authorized");
         _;
     }
 

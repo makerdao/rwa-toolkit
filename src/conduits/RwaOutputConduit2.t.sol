@@ -40,6 +40,7 @@ contract RwaOutputConduit2Test is Test, DSMath {
     function setUp() public {
         outputConduit.mate(me);
         outputConduit.hope(me);
+        outputConduit.kiss(me);
         outputConduit.pick(me);
     }
 
@@ -80,23 +81,6 @@ contract RwaOutputConduit2Test is Test, DSMath {
         outputConduit.deny(address(1));
 
         assertEq(outputConduit.wards(address(1)), 0);
-
-        // Test make it permissionless
-        // --------------------
-        vm.expectEmit(true, false, false, false);
-        emit Rely(address(0));
-
-        outputConduit.rely(address(0));
-
-        assertEq(outputConduit.wards(address(0)), 1);
-
-        // --------------------
-        vm.expectEmit(true, false, false, false);
-        emit Deny(address(0));
-
-        outputConduit.deny(address(0));
-
-        assertEq(outputConduit.wards(address(0)), 0);
     }
 
     function testMateHate() public {
@@ -175,6 +159,26 @@ contract RwaOutputConduit2Test is Test, DSMath {
         assertEq(outputConduit.can(address(0)), 0);
     }
 
+    function testKissDiss() public {
+        assertEq(outputConduit.bud(address(0)), 0);
+
+        // --------------------
+        vm.expectEmit(true, false, false, false);
+        emit Kiss(address(0));
+
+        outputConduit.kiss(address(0));
+
+        assertEq(outputConduit.bud(address(0)), 1);
+
+        // --------------------
+        vm.expectEmit(true, false, false, false);
+        emit Diss(address(0));
+
+        outputConduit.diss(address(0));
+
+        assertEq(outputConduit.bud(address(0)), 0);
+    }
+
     function testFuzzRevertOnUnauthorizedMethods(address sender) public {
         vm.startPrank(sender);
 
@@ -211,36 +215,9 @@ contract RwaOutputConduit2Test is Test, DSMath {
         outputConduit.pick(sender);
     }
 
-    function testFuzzMakeMethodsPermissionless(address sender) public {
-        vm.assume(sender != address(0));
-
-        outputConduit.rely(address(0));
-        outputConduit.hope(address(0));
-        outputConduit.may(address(0));
-
-        vm.startPrank(sender);
-
-        outputConduit.rely(sender);
-        assertEq(outputConduit.wards(sender), 1);
-
-        outputConduit.hope(sender);
-        assertEq(outputConduit.can(sender), 1);
-
-        outputConduit.mate(sender);
-        assertEq(outputConduit.may(sender), 1);
-
-        outputConduit.hate(sender);
-        assertEq(outputConduit.may(sender), 0);
-
-        outputConduit.nope(sender);
-        assertEq(outputConduit.can(sender), 0);
-
-        outputConduit.deny(sender);
-        assertEq(outputConduit.wards(sender), 0);
-    }
-
     function testPick() public {
         address who = vm.addr(2);
+        outputConduit.kiss(who);
 
         vm.expectEmit(true, false, false, false);
         emit Pick(who);
@@ -253,6 +230,22 @@ contract RwaOutputConduit2Test is Test, DSMath {
 
         outputConduit.pick(address(0));
         assertEq(outputConduit.to(), address(0));
+    }
+
+    function testFuzzPermissionlessPick(address sender, address who) public {
+        vm.assume(sender != me);
+        vm.assume(who != address(0));
+
+        outputConduit.hope(address(0));
+        outputConduit.kiss(who);
+
+        vm.expectEmit(true, false, false, false);
+        emit Pick(who);
+
+        vm.prank(sender);
+        outputConduit.pick(who);
+
+        assertEq(outputConduit.to(), who);
     }
 
     function testPush() public {
@@ -278,6 +271,7 @@ contract RwaOutputConduit2Test is Test, DSMath {
 
     function testFuzzPermissionlessPush(address sender) public {
         vm.assume(sender != me);
+        outputConduit.mate(address(0));
 
         dai.mint(me, 1_000 * WAD);
 
@@ -288,8 +282,6 @@ contract RwaOutputConduit2Test is Test, DSMath {
 
         assertEq(dai.balanceOf(me), 500 * WAD);
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
-
-        outputConduit.mate(address(0));
 
         vm.expectEmit(true, false, false, true);
         emit Push(me, 500 * WAD);
@@ -306,6 +298,8 @@ contract RwaOutputConduit2Test is Test, DSMath {
     event Deny(address indexed usr);
     event Hope(address indexed usr);
     event Nope(address indexed usr);
+    event Kiss(address indexed who);
+    event Diss(address indexed who);
     event Mate(address indexed usr);
     event Hate(address indexed usr);
     event Push(address indexed to, uint256 wad);

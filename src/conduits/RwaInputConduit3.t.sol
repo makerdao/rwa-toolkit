@@ -303,6 +303,32 @@ contract RwaInputConduit3Test is Test, DSMath {
         assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
     }
 
+    function testFuzzPermissionlessPush(address sender) public {
+        vm.assume(sender != me);
+        inputConduit.mate(address(0));
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(usdx.balanceOf(address(joinA)), 0);
+
+        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
+
+        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
+
+        assertEq(dai.balanceOf(testUrn), 0);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(testUrn), 500 * WAD);
+
+        vm.prank(sender);
+        inputConduit.push();
+
+        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
+    }
+
     function testPushAfterChangingPsm() public {
         // Init new PSM
         AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(usdx));

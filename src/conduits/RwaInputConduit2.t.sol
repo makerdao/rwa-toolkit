@@ -70,23 +70,6 @@ contract RwaInputConduit2Test is Test, DSMath {
         inputConduit.deny(address(1));
 
         assertEq(inputConduit.wards(address(1)), 0);
-
-        // Test make it permissionless
-        // --------------------
-        vm.expectEmit(true, false, false, false);
-        emit Rely(address(0));
-
-        inputConduit.rely(address(0));
-
-        assertEq(inputConduit.wards(address(0)), 1);
-
-        // --------------------
-        vm.expectEmit(true, false, false, false);
-        emit Deny(address(0));
-
-        inputConduit.deny(address(0));
-
-        assertEq(inputConduit.wards(address(0)), 0);
     }
 
     function testMateHate() public {
@@ -153,27 +136,6 @@ contract RwaInputConduit2Test is Test, DSMath {
         inputConduit.push();
     }
 
-    function testFuzzMakeMethodsPermissionless(address sender) public {
-        vm.assume(sender != address(0));
-
-        inputConduit.rely(address(0));
-        inputConduit.may(address(0));
-
-        vm.startPrank(sender);
-
-        inputConduit.rely(sender);
-        assertEq(inputConduit.wards(sender), 1);
-
-        inputConduit.mate(sender);
-        assertEq(inputConduit.may(sender), 1);
-
-        inputConduit.hate(sender);
-        assertEq(inputConduit.may(sender), 0);
-
-        inputConduit.deny(sender);
-        assertEq(inputConduit.wards(sender), 0);
-    }
-
     function testFileTo() public {
         address updatedTo = vm.addr(2);
         vm.expectEmit(true, true, false, false);
@@ -206,6 +168,7 @@ contract RwaInputConduit2Test is Test, DSMath {
 
     function testFuzzPermissionlessPush(address sender) public {
         vm.assume(sender != me);
+        inputConduit.mate(address(0));
 
         dai.mint(me, 1_000 * WAD);
 
@@ -216,8 +179,6 @@ contract RwaInputConduit2Test is Test, DSMath {
 
         assertEq(dai.balanceOf(me), 500 * WAD);
         assertEq(dai.balanceOf(address(inputConduit)), 500 * WAD);
-
-        inputConduit.mate(address(0));
 
         vm.expectEmit(true, false, false, true);
         emit Push(to, 500 * WAD);

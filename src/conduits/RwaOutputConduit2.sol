@@ -39,6 +39,8 @@ contract RwaOutputConduit2 {
     mapping(address => uint256) public wards;
     /// @notice Addresses with operator access on this contract. `can[usr]`
     mapping(address => uint256) public can;
+    /// @notice Whitelist for addresses which can be picked. `bud[who]`
+    mapping(address => uint256) public bud;
     /// @notice Addresses with push access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
@@ -56,16 +58,6 @@ contract RwaOutputConduit2 {
      */
     event Deny(address indexed usr);
     /**
-     * @notice `usr` was granted push access.
-     * @param usr The user address.
-     */
-    event Mate(address indexed usr);
-    /**
-     * @notice `usr` push access was revoked.
-     * @param usr The user address.
-     */
-    event Hate(address indexed usr);
-    /**
      * @notice `usr` was granted operator access.
      * @param usr The user address.
      */
@@ -76,10 +68,30 @@ contract RwaOutputConduit2 {
      */
     event Nope(address indexed usr);
     /**
+     * @notice `who` address whitelisted for pick.
+     * @param who The user address.
+     */
+    event Kiss(address indexed who);
+    /**
+     * @notice `who` address was removed from whitelist.
+     * @param who The user address.
+     */
+    event Diss(address indexed who);
+    /**
      * @notice `who` address was picked as the recipient.
      * @param who The user address.
      */
     event Pick(address indexed who);
+    /**
+     * @notice `usr` was granted push access.
+     * @param usr The user address.
+     */
+    event Mate(address indexed usr);
+    /**
+     * @notice `usr` push access was revoked.
+     * @param usr The user address.
+     */
+    event Hate(address indexed usr);
     /**
      * @notice `wad` amount of Dai was pushed to the recipient `to`.
      * @param to The Dai recipient address
@@ -98,7 +110,7 @@ contract RwaOutputConduit2 {
     }
 
     modifier auth() {
-        require(wards[msg.sender] == 1 || wards[address(0)] == 1, "RwaOutputConduit2/not-authorized");
+        require(wards[msg.sender] == 1, "RwaOutputConduit2/not-authorized");
         _;
     }
 
@@ -121,24 +133,6 @@ contract RwaOutputConduit2 {
     }
 
     /**
-     * @notice Grants `usr` push access to this contract.
-     * @param usr The user address.
-     */
-    function mate(address usr) external auth {
-        may[usr] = 1;
-        emit Mate(usr);
-    }
-
-    /**
-     * @notice Revokes `usr` push access from this contract.
-     * @param usr The user address.
-     */
-    function hate(address usr) external auth {
-        may[usr] = 0;
-        emit Hate(usr);
-    }
-
-    /**
      * @notice Grants `usr` operator access to this contract.
      * @param usr The user address.
      */
@@ -157,11 +151,49 @@ contract RwaOutputConduit2 {
     }
 
     /**
+     * @notice Whitelist `who` address for `pick`.
+     * @param who The user address.
+     */
+    function kiss(address who) external auth {
+        bud[who] = 1;
+        emit Kiss(who);
+    }
+
+    /**
+     * @notice Remove `who` address from `pick` whitelist.
+     * @param who The user address.
+     */
+    function diss(address who) external auth {
+        if (to == who) to = address(0);
+        bud[who] = 0;
+        emit Diss(who);
+    }
+
+    /**
+     * @notice Grants `usr` push access to this contract.
+     * @param usr The user address.
+     */
+    function mate(address usr) external auth {
+        may[usr] = 1;
+        emit Mate(usr);
+    }
+
+    /**
+     * @notice Revokes `usr` push access from this contract.
+     * @param usr The user address.
+     */
+    function hate(address usr) external auth {
+        may[usr] = 0;
+        emit Hate(usr);
+    }
+
+    /**
      * @notice Sets `who` address as the recipient.
      * @param who Recipient Dai address.
      */
     function pick(address who) public {
         require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaOutputConduit2/not-operator");
+        require(bud[who] == 1 || who == address(0), "RwaOutputConduit2/not-bud");
         to = who;
         emit Pick(who);
     }

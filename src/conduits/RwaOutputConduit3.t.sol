@@ -369,6 +369,22 @@ contract RwaOutputConduit3Test is Test, DSMath {
         assertEq(outputConduit.to(), address(0));
     }
 
+    function testFuzzPermissionlessPick(address sender, address who) public {
+        vm.assume(sender != me);
+        vm.assume(who != address(0));
+
+        outputConduit.hope(address(0));
+        outputConduit.kiss(who);
+
+        vm.expectEmit(true, false, false, false);
+        emit Pick(who);
+
+        vm.prank(sender);
+        outputConduit.pick(who);
+
+        assertEq(outputConduit.to(), who);
+    }
+
     function testPush() public {
         assertEq(outputConduit.to(), me);
         assertEq(usdx.balanceOf(me), 0);
@@ -382,6 +398,32 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(me), 500 * USDX_BASE_UNIT);
+        outputConduit.push();
+
+        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_CONVERSION_FACTOR);
+        assertEq(outputConduit.to(), address(0));
+    }
+
+    function testFuzzPermissionlessPush(address sender) public {
+        outputConduit.mate(address(0));
+
+        vm.assume(sender != me);
+
+        assertEq(outputConduit.to(), me);
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(usdx.balanceOf(address(outputConduit)), 0);
+        assertEq(dai.balanceOf(address(me)), 1_000 * WAD);
+
+        dai.transfer(address(outputConduit), 500 * WAD);
+
+        assertEq(dai.balanceOf(me), 500 * WAD);
+        assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
+
+        vm.expectEmit(true, true, false, false);
+        emit Push(address(me), 500 * USDX_BASE_UNIT);
+
+        vm.prank(sender);
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);

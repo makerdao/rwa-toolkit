@@ -11,7 +11,7 @@ update:; forge update
 # Build & test
 build:; forge build
 test:; forge test --no-match-path "**.integration.t.sol" -vvv # --ffi # enable if you need the `ffi` cheat code on HEVM
-test-integration:; forge test --match-path "**.integration.t.sol" --fork-url ${FORK_RPC_URL} -vvv
+test-integration:; forge test --match-path "**.integration.t.sol" --fork-url ${FORK_URL} -vvv
 
 flatten:; forge flatten --source-file ${file}
 

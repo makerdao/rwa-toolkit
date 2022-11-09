@@ -29,10 +29,8 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - `push()` can be made permissionless by calling `mate(address(0))`.
  *  - The `push()` method swaps all DAI balance of the contract to GEM using the PSM.
  *  - The `push(uint256)` method swaps specified amount of DAI to GEM using the PSM.
- *  - `pick()` can be made permissionless by calling `hope(address(0))`.
  *  - Requires DAI, GEM and PSM addresses in the constructor.
  *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The `quit()` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.

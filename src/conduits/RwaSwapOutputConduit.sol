@@ -29,15 +29,17 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
+ *  - `push()` can be made permissionless by calling `mate(address(0))`.
+ *  - The `push()` method swaps all DAI balance of the contract to GEM using the PSM.
+ *  - The `push(uint256)` method swaps specified amount of DAI to GEM using the PSM.
+ *  - `pick()` can be made permissionless by calling `hope(address(0))`.
  *  - Requires DAI, GEM and PSM addresses in the constructor.
  *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
- *  - The `push()` method swaps entire DAI balance to GEM using PSM.
- *  - THe `push(uint256)` method swaps specified amount of DAI to GEM using PSM.
  *  - The `quit()` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `quit(uint256)` method allows moving the specified amount of DAI balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file` method allows updating `quitTo`, `psm` addresses. It can be called only by the admin.
  */
-contract RwaOutputConduit3 {
+contract RwaSwapOutputConduit {
     /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
     /// @notice DAI token contract address.
@@ -133,12 +135,12 @@ contract RwaOutputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaOutputConduit3/not-authorized");
+        require(wards[msg.sender] == 1, "RwaSwapOutputConduit/not-authorized");
         _;
     }
 
     modifier onlyMate() {
-        require(may[msg.sender] == 1, "RwaOutputConduit3/not-mate");
+        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaSwapOutputConduit/not-mate");
         _;
     }
 
@@ -153,8 +155,8 @@ contract RwaOutputConduit3 {
         address _gem,
         address _psm
     ) public {
-        require(PsmAbstract(_psm).dai() == _dai, "RwaOutputConduit3/wrong-dai-for-psm");
-        require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaOutputConduit3/wrong-gem-for-psm");
+        require(PsmAbstract(_psm).dai() == _dai, "RwaSwapOutputConduit/wrong-dai-for-psm");
+        require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaSwapOutputConduit/wrong-gem-for-psm");
 
         // We assume that DAI will alway have 18 decimals
         to18ConversionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
@@ -260,10 +262,10 @@ contract RwaOutputConduit3 {
         if (what == "quitTo") {
             quitTo = data;
         } else if (what == "psm") {
-            require(PsmAbstract(data).dai() == address(dai), "RwaOutputConduit3/wrong-dai-for-psm");
+            require(PsmAbstract(data).dai() == address(dai), "RwaSwapOutputConduit/wrong-dai-for-psm");
             require(
                 GemJoinAbstract(PsmAbstract(data).gemJoin()).gem() == address(gem),
-                "RwaOutputConduit3/wrong-gem-for-psm"
+                "RwaSwapOutputConduit/wrong-gem-for-psm"
             );
 
             // Revoke approval for the old PSM
@@ -273,7 +275,7 @@ contract RwaOutputConduit3 {
 
             psm = PsmAbstract(data);
         } else {
-            revert("RwaOutputConduit3/unrecognised-param");
+            revert("RwaSwapOutputConduit/unrecognised-param");
         }
 
         emit File(what, data);
@@ -285,8 +287,8 @@ contract RwaOutputConduit3 {
      * @dev `who` address should have been whitelisted using `kiss`.
      */
     function pick(address who) external {
-        require(can[msg.sender] == 1, "RwaOutputConduit3/not-operator");
-        require(bud[who] == 1 || who == address(0), "RwaOutputConduit3/not-bud");
+        require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaSwapOutputConduit/not-operator");
+        require(bud[who] == 1 || who == address(0), "RwaSwapOutputConduit/not-bud");
         to = who;
         emit Pick(who);
     }
@@ -297,7 +299,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Swaps the DAI balance of this contract into GEM through the PSM and push it into the recipient address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      */
     function push() external onlyMate {
         _doPush(dai.balanceOf(address(this)));
@@ -305,7 +307,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function push(uint256 wad) external onlyMate {
@@ -314,7 +316,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out any DAI balance to `quitTo` address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      */
     function quit() external onlyMate {
         _doQuit(dai.balanceOf(address(this)));
@@ -322,7 +324,7 @@ contract RwaOutputConduit3 {
 
     /**
      * @notice Flushes out the specified amount of DAI to the `quitTo` address.
-     * @dev `msg.sender` must have received push access through `mate()`.
+     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function quit(uint256 wad) external onlyMate {
@@ -370,11 +372,11 @@ contract RwaOutputConduit3 {
      * @param wad DAI amount.
      */
     function _doPush(uint256 wad) internal {
-        require(to != address(0), "RwaOutputConduit3/to-not-picked");
+        require(to != address(0), "RwaSwapOutputConduit/to-not-picked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
         uint256 gemAmt = expectedGemAmt(wad);
-        require(gemAmt > 0, "RwaOutputConduit3/insufficient-swap-gem-amount");
+        require(gemAmt > 0, "RwaSwapOutputConduit/insufficient-swap-gem-amount");
 
         address recipient = to;
         to = address(0);
@@ -388,7 +390,7 @@ contract RwaOutputConduit3 {
      * @param wad The DAI amount.
      */
     function _doQuit(uint256 wad) internal {
-        require(quitTo != address(0), "RwaOutputConduit3/invalid-quit-to-address");
+        require(quitTo != address(0), "RwaSwapOutputConduit/invalid-quit-to-address");
 
         dai.transfer(quitTo, wad);
         emit Quit(quitTo, wad);

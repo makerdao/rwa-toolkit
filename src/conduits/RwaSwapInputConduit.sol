@@ -26,18 +26,18 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
+ *  - Requires DAI, GEM and PSM addresses in the constructor.
+ *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` method is permissioned.
  *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - Requires DAI, GEM and PSM addresses in the constructor.
- *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The `push()` method swaps entire GEM balance to DAI using PSM.
- *  - THe `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
+ *  - The `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
  *  - The `quit()` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `quit(uint256)` method allows moving the specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
  *  - The `file(bytes32, address)` method allows updating `quitTo`, `to`, `psm` addresses. It can be called only by the admin.
  */
-contract RwaInputConduit3 {
+contract RwaSwapInputConduit {
     /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
     /// @notice DAI token contract address.
@@ -104,12 +104,12 @@ contract RwaInputConduit3 {
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "RwaInputConduit3/not-authorized");
+        require(wards[msg.sender] == 1, "RwaSwapInputConduit/not-authorized");
         _;
     }
 
     modifier onlyMate() {
-        require(may[msg.sender] == 1, "RwaInputConduit3/not-mate");
+        require(may[msg.sender] == 1, "RwaSwapInputConduit/not-mate");
         _;
     }
 
@@ -126,9 +126,9 @@ contract RwaInputConduit3 {
         address _psm,
         address _to
     ) public {
-        require(_to != address(0), "RwaInputConduit3/invalid-to-address");
-        require(PsmAbstract(_psm).dai() == _dai, "RwaInputConduit3/wrong-dai-for-psm");
-        require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaInputConduit3/wrong-gem-for-psm");
+        require(_to != address(0), "RwaSwapInputConduit/invalid-to-address");
+        require(PsmAbstract(_psm).dai() == _dai, "RwaSwapInputConduit/wrong-dai-for-psm");
+        require(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem() == _gem, "RwaSwapInputConduit/wrong-gem-for-psm");
 
         // We assume that DAI will alway have 18 decimals
         to18ConversionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
@@ -201,10 +201,10 @@ contract RwaInputConduit3 {
         } else if (what == "to") {
             to = data;
         } else if (what == "psm") {
-            require(PsmAbstract(data).dai() == address(dai), "RwaInputConduit3/wrong-dai-for-psm");
+            require(PsmAbstract(data).dai() == address(dai), "RwaSwapInputConduit/wrong-dai-for-psm");
             require(
                 GemJoinAbstract(PsmAbstract(data).gemJoin()).gem() == address(gem),
-                "RwaInputConduit3/wrong-gem-for-psm"
+                "RwaSwapInputConduit/wrong-gem-for-psm"
             );
 
             // Revoke approval for the old PSM gemjoin
@@ -214,7 +214,7 @@ contract RwaInputConduit3 {
 
             psm = PsmAbstract(data);
         } else {
-            revert("RwaInputConduit3/unrecognised-param");
+            revert("RwaSwapInputConduit/unrecognised-param");
         }
 
         emit File(what, data);
@@ -299,7 +299,7 @@ contract RwaInputConduit3 {
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
-        require(to != address(0), "RwaInputConduit3/invalid-to-address");
+        require(to != address(0), "RwaSwapInputConduit/invalid-to-address");
 
         psm.sellGem(to, amt);
         emit Push(to, expectedDaiWad(amt));
@@ -310,7 +310,7 @@ contract RwaInputConduit3 {
      * @param amt GEM amount.
      */
     function _doQuit(uint256 amt) internal {
-        require(quitTo != address(0), "RwaInputConduit3/invalid-quit-to-address");
+        require(quitTo != address(0), "RwaSwapInputConduit/invalid-quit-to-address");
 
         gem.transfer(quitTo, amt);
         emit Quit(quitTo, amt);

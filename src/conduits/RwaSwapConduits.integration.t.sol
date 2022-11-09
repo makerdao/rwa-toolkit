@@ -24,10 +24,10 @@ import "dss-interfaces/Interfaces.sol";
 
 import {DssPsm} from "dss-psm/psm.sol";
 
-import {RwaInputConduit4} from "./RwaInputConduit4.sol";
-import {RwaOutputConduit4} from "../conduits/RwaOutputConduit4.sol";
+import {RwaSwapInputConduit} from "./RwaSwapInputConduit.sol";
+import {RwaSwapOutputConduit} from "../conduits/RwaSwapOutputConduit.sol";
 
-abstract contract RwaConduits4TestAbstract is Test, DSMath {
+abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
     // Define both in constructor of derived contract
     bytes32 ILK;
     address psm;
@@ -49,8 +49,8 @@ abstract contract RwaConduits4TestAbstract is Test, DSMath {
     uint256 PSM_TIN;
     uint256 PSM_TOUT;
 
-    RwaInputConduit4 inputConduit;
-    RwaOutputConduit4 outputConduit;
+    RwaSwapInputConduit inputConduit;
+    RwaSwapOutputConduit outputConduit;
 
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
@@ -68,8 +68,8 @@ abstract contract RwaConduits4TestAbstract is Test, DSMath {
 
         deal(address(dai), me, 2 * URN_INK);
 
-        inputConduit = new RwaInputConduit4(address(dai), address(gem), psm, testUrn);
-        outputConduit = new RwaOutputConduit4(address(dai), address(gem), psm);
+        inputConduit = new RwaSwapInputConduit(address(dai), address(gem), psm, testUrn);
+        outputConduit = new RwaSwapOutputConduit(address(dai), address(gem), psm);
 
         inputConduit.mate(me);
         outputConduit.mate(me);
@@ -209,7 +209,7 @@ abstract contract RwaConduits4TestAbstract is Test, DSMath {
     }
 }
 
-contract RwaConduits4PsmUsdcIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmUsdcIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -221,7 +221,7 @@ contract RwaConduits4PsmUsdcIntegrationTest is RwaConduits4TestAbstract {
     }
 }
 
-contract RwaConduits4PsmPaxIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmPaxIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");
@@ -233,7 +233,7 @@ contract RwaConduits4PsmPaxIntegrationTest is RwaConduits4TestAbstract {
     }
 }
 
-contract RwaConduits4PsmGUSDIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmGUSDIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
@@ -257,7 +257,7 @@ contract RwaConduits4PsmGUSDIntegrationTest is RwaConduits4TestAbstract {
     }
 }
 
-contract RwaConduits4PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmGUSDWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
@@ -296,7 +296,7 @@ contract RwaConduits4PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits4TestAb
     }
 }
 
-contract RwaConduits4PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmUSDCWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -324,7 +324,7 @@ contract RwaConduits4PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits4TestAb
     }
 }
 
-contract RwaConduits4PsmPAXWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
+contract RwaSwapConduitsPsmPAXWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");

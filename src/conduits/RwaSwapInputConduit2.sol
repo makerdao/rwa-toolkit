@@ -33,12 +33,16 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  *  - The `push()` and `push(uint256)` methods are permissionless.
  *  - The `push()` method swaps entire GEM balance to DAI using PSM.
  *  - The `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
- *  - The `file(bytes32, address)` method allows updating `to`, `psm` addresses. It can be called only by the admin.
+ *  - The `file(bytes32, address)` method allows updating `to`, `psm` and `recovery` addresses. It can be called only by the admin.
+ *  - There is a `recovery` address that will be allowed to pull GEM from this contract in case of Emergency Shutdown.
+ *  - `push`, `yank` and `file` are disabled after Emergency Shutdown to prevent a potentially corrupt Governance contract from pulling funds from this contract.
  */
 contract RwaSwapInputConduit2 {
-    /// @notice PSM GEM token contract address.
+    /// @notice MCD Vat module.
+    VatAbstract public immutable vat;
+    /// @notice PSM GEM token contract.
     GemAbstract public immutable gem;
-    /// @notice DAI token contract address.
+    /// @notice DAI token contract.
     DaiAbstract public immutable dai;
     /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConversionFactor;
@@ -50,6 +54,9 @@ contract RwaSwapInputConduit2 {
     PsmAbstract public psm;
     /// @notice Recipient address for DAI.
     address public to;
+
+    /// @notice Recovery address for `gem` after Emergency Shutdown.
+    address public recovery;
 
     /**
      * @notice `usr` was granted admin access.
@@ -88,12 +95,14 @@ contract RwaSwapInputConduit2 {
 
     /**
      * @notice Defines addresses and gives `msg.sender` admin access.
+     * @param _vat MCD Vat module address.
      * @param _psm PSM contract address.
      * @param _dai DAI contract address.
      * @param _gem GEM contract address.
      * @param _to RwaUrn contract address.
      */
     constructor(
+        address _vat,
         address _dai,
         address _gem,
         address _psm,
@@ -106,10 +115,10 @@ contract RwaSwapInputConduit2 {
         // We assume that DAI will alway have 18 decimals
         to18ConversionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
 
+        vat = VatAbstract(_vat);
         psm = PsmAbstract(_psm);
         dai = DaiAbstract(_dai);
         gem = GemAbstract(_gem);
-
         to = _to;
 
         // Give unlimited approval to PSM gemjoin
@@ -147,12 +156,16 @@ contract RwaSwapInputConduit2 {
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"to", "psm"`
+     * @param what The changed parameter name. `"to"`, `"psm"`, `"recovery"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
+        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
+
         if (what == "to") {
             to = data;
+        } else if (what == "recovery") {
+            recovery = data;
         } else if (what == "psm") {
             require(PsmAbstract(data).dai() == address(dai), "RwaSwapInputConduit2/wrong-dai-for-psm");
             require(
@@ -204,6 +217,8 @@ contract RwaSwapInputConduit2 {
         address usr,
         uint256 amt
     ) external auth {
+        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
+
         GemAbstract(token).transfer(usr, amt);
         emit Yank(token, usr, amt);
     }
@@ -233,10 +248,26 @@ contract RwaSwapInputConduit2 {
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
+        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
         require(to != address(0), "RwaSwapInputConduit2/invalid-to-address");
 
         psm.sellGem(to, amt);
         emit Push(to, expectedDaiWad(amt));
+    }
+
+    /*//////////////////////////////////
+             Emergency Shutdown
+    //////////////////////////////////*/
+
+    /**
+     * @notice Allows the `recovery` address to pull GEM from this contract after Emergency Shutdown.
+     * @dev This feature enables Dai holders to redeem any GEM tokens sitting in this contract as Emergency Shutdown happens.
+     */
+    function approveRecovery() external {
+        require(vat.live() == 0, "RwaSwapInputConduit2/vat-still-live");
+        require(recovery != address(0), "RwaSwapInputConduit2/recovery-not-set");
+
+        gem.approve(recovery, type(uint256).max);
     }
 
     /*//////////////////////////////////

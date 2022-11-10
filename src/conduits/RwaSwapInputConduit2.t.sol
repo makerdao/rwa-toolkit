@@ -66,6 +66,20 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
     event File(bytes32 indexed what, address data);
     event Yank(address indexed token, address indexed usr, uint256 amt);
 
+    function setUp() public {
+        setUpMCDandPSM();
+
+        testUrn = vm.addr(420);
+        inputConduit = new RwaSwapInputConduit2(
+            address(vat),
+            address(dai),
+            address(usdx),
+            address(psm),
+            address(testUrn)
+        );
+        tin = psm.tin();
+    }
+
     function setUpMCDandPSM() internal {
         me = address(this);
 
@@ -104,35 +118,33 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         vat.file("Line", rad(PSM_LINE_WAD));
     }
 
-    function setUp() public {
-        setUpMCDandPSM();
-
-        testUrn = vm.addr(420);
-        inputConduit = new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(testUrn));
-        tin = psm.tin();
-    }
-
     function testSetWardAndEmitRelyOnDeploy() public {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaSwapInputConduit2 c = new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(testUrn));
+        RwaSwapInputConduit2 c = new RwaSwapInputConduit2(
+            address(vat),
+            address(dai),
+            address(usdx),
+            address(psm),
+            address(testUrn)
+        );
 
         assertEq(c.wards(address(this)), 1);
     }
 
     function testRevertInvalidConstructorArguments() public {
         vm.expectRevert("RwaSwapInputConduit2/invalid-to-address");
-        new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(0));
+        new RwaSwapInputConduit2(address(vat), address(dai), address(usdx), address(psm), address(0));
 
         vm.expectRevert();
-        new RwaSwapInputConduit2(address(0), address(0), address(0), address(testUrn));
+        new RwaSwapInputConduit2(address(vat), address(0), address(0), address(0), address(testUrn));
 
         vm.expectRevert("RwaSwapInputConduit2/wrong-dai-for-psm");
-        new RwaSwapInputConduit2(address(0), address(usdx), address(psm), address(testUrn));
+        new RwaSwapInputConduit2(address(vat), address(0), address(usdx), address(psm), address(testUrn));
 
         vm.expectRevert("RwaSwapInputConduit2/wrong-gem-for-psm");
-        new RwaSwapInputConduit2(address(dai), address(0), address(psm), address(testUrn));
+        new RwaSwapInputConduit2(address(vat), address(dai), address(0), address(psm), address(testUrn));
     }
 
     function testGiveUnlimitedApprovalToPsmGemJoinOnDeploy() public {
@@ -145,7 +157,7 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
 
         vm.expectRevert("Math/sub-overflow");
-        new RwaSwapInputConduit2(address(dai), address(testGem), address(psmT), address(this));
+        new RwaSwapInputConduit2(address(vat), address(dai), address(testGem), address(psmT), address(this));
     }
 
     function testRelyDeny() public {
@@ -191,6 +203,16 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         assertEq(address(inputConduit.psm()), address(newPsm));
         assertEq(usdx.allowance(address(inputConduit), address(psm.gemJoin())), 0);
         assertEq(usdx.allowance(address(inputConduit), address(newPsm.gemJoin())), type(uint256).max);
+    }
+
+    function testFileRecovery() public {
+        address recovery = vm.addr(0x1337);
+        vm.expectEmit(true, true, false, false);
+        emit File(bytes32("recovery"), recovery);
+
+        inputConduit.file(bytes32("recovery"), recovery);
+
+        assertEq(inputConduit.recovery(), recovery);
     }
 
     function testRevertOnFilePsmWithWrongGemDaiAddresses() public {
@@ -462,6 +484,56 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         inputConduit.yank(address(dai), me, dai.balanceOf(address(inputConduit)));
         assertEq(dai.balanceOf(me), daiBalance + wad);
         assertEq(dai.balanceOf(address(inputConduit)), 0);
+    }
+
+    /*//////////////////////////////////
+             Emergency Shutdown
+    //////////////////////////////////*/
+
+    function testRevertDisableMethodsAfterEmergencyShutdown() public {
+        vat.cage();
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.file("to", address(1));
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.file("recovery", address(1));
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.file("psm", address(1));
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.push();
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.push(1);
+
+        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
+        inputConduit.yank(address(usdx), address(this), 1);
+    }
+
+    function testApproveRecoveryAfterEmergencyShutdown() public {
+        address recovery = address(0x1337);
+        inputConduit.file("recovery", recovery);
+
+        vat.cage();
+
+        assertEq(usdx.allowance(address(inputConduit), recovery), 0, "Pre-condition failed: allowance is not zero");
+
+        inputConduit.approveRecovery();
+
+        assertEq(
+            usdx.allowance(address(inputConduit), recovery),
+            type(uint256).max,
+            "Post-condition failed: allowance is not unlimited"
+        );
+    }
+
+    function testReverApproveRecoveryIfAddressWasNotSet() public {
+        vat.cage();
+
+        vm.expectRevert("RwaSwapInputConduit2/recovery-not-set");
+        inputConduit.approveRecovery();
     }
 
     function gemToDai(uint256 gemAmt) internal view returns (uint256) {

@@ -76,7 +76,7 @@ contract RwaSwapInputConduit2 {
     event Push(address indexed to, uint256 wad);
     /**
      * @notice A contract parameter was updated.
-     * @param what The changed parameter name. Currently the supported values are: "to", "psm".
+     * @param what The changed parameter name. Currently the supported values are: "to", "recovery", "psm".
      * @param data The new value of the parameter.
      */
     event File(bytes32 indexed what, address data);

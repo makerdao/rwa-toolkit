@@ -297,7 +297,7 @@ contract RwaSwapOutputConduit {
 
     /**
      * @notice Swaps the DAI balance of this contract into GEM through the PSM and push it into the recipient address.
-     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function push() external onlyMate {
         _doPush(dai.balanceOf(address(this)));
@@ -305,7 +305,7 @@ contract RwaSwapOutputConduit {
 
     /**
      * @notice Swaps the specified amount of DAI into GEM through the PSM and push it to the recipient address.
-     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
+     * @dev `msg.sender` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function push(uint256 wad) external onlyMate {
@@ -314,7 +314,7 @@ contract RwaSwapOutputConduit {
 
     /**
      * @notice Flushes out any DAI balance to `quitTo` address.
-     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
+     * @dev `msg.sender` must have received push access through `mate()`.
      */
     function quit() external onlyMate {
         _doQuit(dai.balanceOf(address(this)));
@@ -322,7 +322,7 @@ contract RwaSwapOutputConduit {
 
     /**
      * @notice Flushes out the specified amount of DAI to the `quitTo` address.
-     * @dev `msg.sender` or `address(0)` must have received push access through `mate()`.
+     * @dev `msg.sender` must have received push access through `mate()`.
      * @param wad DAI amount.
      */
     function quit(uint256 wad) external onlyMate {

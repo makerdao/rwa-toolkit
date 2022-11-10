@@ -27,8 +27,8 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
- *  - Requires DAI, GEM and PSM addresses in the constructor.
- *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
+ *  - Requires Vat, DAI, GEM and PSM addresses in the constructor.
+ *      - Vat, DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
  *  - The `push()` and `push(uint256)` methods are permissionless.
  *  - The `push()` method swaps entire GEM balance to DAI using PSM.

@@ -34,7 +34,7 @@ import {AuthGemJoin} from "dss-psm/join-auth.sol";
 
 import {RwaSwapInputConduit2} from "./RwaSwapInputConduit2.sol";
 
-contract RwaSwapInputConduit2Test is Test, DSMath {
+contract RwaSwapInputConduitTest is Test, DSMath {
     address me;
 
     Vat vat;
@@ -62,23 +62,12 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Mate(address indexed usr);
+    event Hate(address indexed usr);
     event Push(address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
+    event Quit(address indexed quitTo, uint256 amt);
     event Yank(address indexed token, address indexed usr, uint256 amt);
-
-    function setUp() public {
-        setUpMCDandPSM();
-
-        testUrn = vm.addr(420);
-        inputConduit = new RwaSwapInputConduit2(
-            address(vat),
-            address(dai),
-            address(usdx),
-            address(psm),
-            address(testUrn)
-        );
-        tin = psm.tin();
-    }
 
     function setUpMCDandPSM() internal {
         me = address(this);
@@ -118,33 +107,35 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         vat.file("Line", rad(PSM_LINE_WAD));
     }
 
+    function setUp() public {
+        setUpMCDandPSM();
+
+        testUrn = vm.addr(420);
+        inputConduit = new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(testUrn));
+        tin = psm.tin();
+    }
+
     function testSetWardAndEmitRelyOnDeploy() public {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaSwapInputConduit2 c = new RwaSwapInputConduit2(
-            address(vat),
-            address(dai),
-            address(usdx),
-            address(psm),
-            address(testUrn)
-        );
+        RwaSwapInputConduit2 c = new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(testUrn));
 
         assertEq(c.wards(address(this)), 1);
     }
 
     function testRevertInvalidConstructorArguments() public {
         vm.expectRevert("RwaSwapInputConduit2/invalid-to-address");
-        new RwaSwapInputConduit2(address(vat), address(dai), address(usdx), address(psm), address(0));
+        new RwaSwapInputConduit2(address(dai), address(usdx), address(psm), address(0));
 
         vm.expectRevert();
-        new RwaSwapInputConduit2(address(vat), address(0), address(0), address(0), address(testUrn));
+        new RwaSwapInputConduit2(address(0), address(0), address(0), address(testUrn));
 
         vm.expectRevert("RwaSwapInputConduit2/wrong-dai-for-psm");
-        new RwaSwapInputConduit2(address(vat), address(0), address(usdx), address(psm), address(testUrn));
+        new RwaSwapInputConduit2(address(0), address(usdx), address(psm), address(testUrn));
 
         vm.expectRevert("RwaSwapInputConduit2/wrong-gem-for-psm");
-        new RwaSwapInputConduit2(address(vat), address(dai), address(0), address(psm), address(testUrn));
+        new RwaSwapInputConduit2(address(dai), address(0), address(psm), address(testUrn));
     }
 
     function testGiveUnlimitedApprovalToPsmGemJoinOnDeploy() public {
@@ -157,7 +148,7 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
 
         vm.expectRevert("Math/sub-overflow");
-        new RwaSwapInputConduit2(address(vat), address(dai), address(testGem), address(psmT), address(this));
+        new RwaSwapInputConduit2(address(dai), address(testGem), address(psmT), address(this));
     }
 
     function testRelyDeny() public {
@@ -178,6 +169,36 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         inputConduit.deny(address(0));
 
         assertEq(inputConduit.wards(address(0)), 0);
+    }
+
+    function testMateHate() public {
+        assertEq(inputConduit.may(address(0)), 0);
+
+        // --------------------
+        vm.expectEmit(true, false, false, false);
+        emit Mate(address(0));
+
+        inputConduit.mate(address(0));
+
+        assertEq(inputConduit.may(address(0)), 1);
+
+        // --------------------
+        vm.expectEmit(true, false, false, false);
+        emit Hate(address(0));
+
+        inputConduit.hate(address(0));
+
+        assertEq(inputConduit.may(address(0)), 0);
+    }
+
+    function testFileQuitTo() public {
+        address quitToAddress = vm.addr(1);
+        vm.expectEmit(true, true, false, false);
+        emit File(bytes32("quitTo"), quitToAddress);
+
+        inputConduit.file(bytes32("quitTo"), quitToAddress);
+
+        assertEq(inputConduit.quitTo(), quitToAddress);
     }
 
     function testFileTo() public {
@@ -203,16 +224,6 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         assertEq(address(inputConduit.psm()), address(newPsm));
         assertEq(usdx.allowance(address(inputConduit), address(psm.gemJoin())), 0);
         assertEq(usdx.allowance(address(inputConduit), address(newPsm.gemJoin())), type(uint256).max);
-    }
-
-    function testFileRecovery() public {
-        address recovery = vm.addr(0x1337);
-        vm.expectEmit(true, true, false, false);
-        emit File(bytes32("recovery"), recovery);
-
-        inputConduit.file(bytes32("recovery"), recovery);
-
-        assertEq(inputConduit.recovery(), recovery);
     }
 
     function testRevertOnFilePsmWithWrongGemDaiAddresses() public {
@@ -245,7 +256,23 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         inputConduit.deny(address(0));
 
         vm.expectRevert("RwaSwapInputConduit2/not-authorized");
+        inputConduit.hate(address(0));
+
+        vm.expectRevert("RwaSwapInputConduit2/not-authorized");
+        inputConduit.mate(address(0));
+
+        vm.expectRevert("RwaSwapInputConduit2/not-authorized");
+        inputConduit.file(bytes32("quitTo"), address(0));
+
+        vm.expectRevert("RwaSwapInputConduit2/not-authorized");
         inputConduit.yank(address(0), me, 0);
+    }
+
+    function testRevertOnNotMateMethods() public {
+        vm.startPrank(address(0));
+
+        vm.expectRevert("RwaSwapInputConduit2/not-mate");
+        inputConduit.quit();
     }
 
     function testPush() public {
@@ -262,31 +289,6 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
 
         vm.expectEmit(true, true, false, false);
         emit Push(address(testUrn), 500 * WAD);
-        inputConduit.push();
-
-        assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
-        assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(dai.balanceOf(testUrn), gemToDai(500 * USDX_BASE_UNIT));
-    }
-
-    function testFuzzPermissionlessPush(address sender) public {
-        vm.assume(sender != me);
-
-        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT);
-        assertEq(usdx.balanceOf(address(inputConduit)), 0);
-        assertEq(usdx.balanceOf(address(joinA)), 0);
-
-        usdx.transfer(address(inputConduit), 500 * USDX_BASE_UNIT);
-
-        assertEq(usdx.balanceOf(me), USDX_MINT_AMOUNT - 500 * USDX_BASE_UNIT);
-        assertEq(usdx.balanceOf(address(inputConduit)), 500 * USDX_BASE_UNIT);
-
-        assertEq(dai.balanceOf(testUrn), 0);
-
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(testUrn), 500 * WAD);
-
-        vm.prank(sender);
         inputConduit.push();
 
         assertEq(usdx.balanceOf(address(joinA)), 500 * USDX_BASE_UNIT);
@@ -469,6 +471,53 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         assertApproxEqAbs(dai.balanceOf(address(testUrn)), expectedWad, USDX_DAI_CONVERSION_FACTOR);
     }
 
+    function testQuit() public {
+        inputConduit.file("quitTo", address(this));
+        usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
+
+        assertEq(inputConduit.quitTo(), me);
+        assertEq(usdx.balanceOf(me), 0);
+        assertEq(usdx.balanceOf(address(inputConduit)), USDX_MINT_AMOUNT);
+
+        vm.expectEmit(true, true, false, false);
+        emit Quit(inputConduit.quitTo(), USDX_MINT_AMOUNT);
+        inputConduit.quit();
+
+        assertEq(usdx.balanceOf(inputConduit.quitTo()), USDX_MINT_AMOUNT);
+    }
+
+    function testRevertOnQuitWhenQuitToAddressNotSet() public {
+        inputConduit.file("quitTo", address(0));
+        assertEq(inputConduit.quitTo(), address(0));
+
+        vm.expectRevert("RwaSwapInputConduit2/invalid-quit-to-address");
+        inputConduit.quit();
+    }
+
+    function testQuitAmountFuzz(uint256 amt) public {
+        assertEq(inputConduit.quitTo(), me);
+        uint256 usdxBalance = usdx.balanceOf(me);
+        usdx.transfer(address(inputConduit), usdxBalance);
+        uint256 usdxCBalance = usdx.balanceOf(address(inputConduit));
+        assertEq(usdx.balanceOf(me), 0);
+
+        amt = bound(amt, 1 * USDX_BASE_UNIT, usdxCBalance);
+
+        vm.expectEmit(true, true, false, false);
+        emit Quit(inputConduit.quitTo(), amt);
+        inputConduit.quit(amt);
+
+        assertEq(usdx.balanceOf(inputConduit.quitTo()), amt);
+        assertEq(usdx.balanceOf(address(inputConduit)), usdxCBalance - amt);
+    }
+
+    function testRevertOnQuitAmountMoreThenGemBalance() public {
+        assertEq(usdx.balanceOf(address(inputConduit)), 0);
+
+        vm.expectRevert("ds-token-insufficient-balance");
+        inputConduit.quit(1);
+    }
+
     function testYank() public {
         uint256 wad = 100 * WAD;
 
@@ -484,56 +533,6 @@ contract RwaSwapInputConduit2Test is Test, DSMath {
         inputConduit.yank(address(dai), me, dai.balanceOf(address(inputConduit)));
         assertEq(dai.balanceOf(me), daiBalance + wad);
         assertEq(dai.balanceOf(address(inputConduit)), 0);
-    }
-
-    /*//////////////////////////////////
-             Emergency Shutdown
-    //////////////////////////////////*/
-
-    function testRevertDisableMethodsAfterEmergencyShutdown() public {
-        vat.cage();
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.file("to", address(1));
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.file("recovery", address(1));
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.file("psm", address(1));
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.push();
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.push(1);
-
-        vm.expectRevert("RwaSwapInputConduit2/vat-not-live");
-        inputConduit.yank(address(usdx), address(this), 1);
-    }
-
-    function testApproveRecoveryAfterEmergencyShutdown() public {
-        address recovery = address(0x1337);
-        inputConduit.file("recovery", recovery);
-
-        vat.cage();
-
-        assertEq(usdx.allowance(address(inputConduit), recovery), 0, "Pre-condition failed: allowance is not zero");
-
-        inputConduit.approveRecovery();
-
-        assertEq(
-            usdx.allowance(address(inputConduit), recovery),
-            type(uint256).max,
-            "Post-condition failed: allowance is not unlimited"
-        );
-    }
-
-    function testReverApproveRecoveryIfAddressWasNotSet() public {
-        vat.cage();
-
-        vm.expectRevert("RwaSwapInputConduit2/recovery-not-set");
-        inputConduit.approveRecovery();
     }
 
     function gemToDai(uint256 gemAmt) internal view returns (uint256) {

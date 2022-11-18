@@ -17,7 +17,6 @@
 pragma solidity 0.6.12;
 
 import {GemAbstract} from "dss-interfaces/ERC/GemAbstract.sol";
-import {VatAbstract} from "dss-interfaces/dss/VatAbstract.sol";
 import {DaiAbstract} from "dss-interfaces/dss/DaiAbstract.sol";
 import {PsmAbstract} from "dss-interfaces/dss/PsmAbstract.sol";
 import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
@@ -27,36 +26,35 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Nazar Duchak <nazar@clio.finance>
  * @title An Input Conduit for real-world assets (RWA).
  * @dev This contract differs from the original [RwaInputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L20-L39):
- *  - Requires Vat, DAI, GEM and PSM addresses in the constructor.
- *      - Vat, DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
+ *  - Requires DAI, GEM and PSM addresses in the constructor.
+ *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
  *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
- *  - The `push()` and `push(uint256)` methods are permissionless.
+ *  - The `push()` method is permissionless.
  *  - The `push()` method swaps entire GEM balance to DAI using PSM.
  *  - The `push(uint256)` method swaps specified amount of GEM to DAI using PSM.
- *  - The `file(bytes32, address)` method allows updating `to`, `psm` and `recovery` addresses. It can be called only by the admin.
- *  - There is a `recovery` address that will be allowed to pull GEM from this contract in case of Emergency Shutdown.
- *  - `push`, `yank` and `file` are disabled after Emergency Shutdown to prevent a potentially corrupt Governance contract from pulling funds from this contract.
+ *  - The `quit()` method allows moving outstanding GEM balance to `quitTo`. It can be called only by `mate`d addresses.
+ *  - The `quit(uint256)` method allows moving the specified amount of GEM balance to `quitTo`. It can be called only by `mate`d addresses.
+ *  - The `file(bytes32, address)` method allows updating `quitTo`, `to`, `psm` addresses. It can be called only by the admin.
  */
 contract RwaSwapInputConduit2 {
-    /// @notice MCD Vat module.
-    VatAbstract public immutable vat;
-    /// @notice PSM GEM token contract.
+    /// @notice PSM GEM token contract address.
     GemAbstract public immutable gem;
-    /// @notice DAI token contract.
+    /// @notice DAI token contract address.
     DaiAbstract public immutable dai;
     /// @dev DAI/GEM resolution difference.
     uint256 private immutable to18ConversionFactor;
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
+    /// @notice Addresses with push access on this contract. `may[usr]`
+    mapping(address => uint256) public may;
 
     /// @notice PSM contract address.
     PsmAbstract public psm;
     /// @notice Recipient address for DAI.
     address public to;
-
-    /// @notice Recovery address for `gem` after Emergency Shutdown.
-    address public recovery;
+    /// @notice Destination address for GEM after calling `quit`.
+    address public quitTo;
 
     /**
      * @notice `usr` was granted admin access.
@@ -69,6 +67,16 @@ contract RwaSwapInputConduit2 {
      */
     event Deny(address indexed usr);
     /**
+     * @notice `usr` was granted push access.
+     * @param usr The user address.
+     */
+    event Mate(address indexed usr);
+    /**
+     * @notice `usr` push access was revoked.
+     * @param usr The user address.
+     */
+    event Hate(address indexed usr);
+    /**
      * @notice `wad` amount of Dai was pushed to `to`.
      * @param to Recipient address for DAI.
      * @param wad The amount of DAI.
@@ -76,10 +84,16 @@ contract RwaSwapInputConduit2 {
     event Push(address indexed to, uint256 wad);
     /**
      * @notice A contract parameter was updated.
-     * @param what The changed parameter name. Currently the supported values are: "to", "recovery", "psm".
+     * @param what The changed parameter name. Currently the supported values are: "quitTo", "to", "psm".
      * @param data The new value of the parameter.
      */
     event File(bytes32 indexed what, address data);
+    /**
+     * @notice The conduit outstanding GEM balance was flushed out to `quitTo`.
+     * @param quitTo The quitTo address.
+     * @param wad The amount of GEM flushed out.
+     */
+    event Quit(address indexed quitTo, uint256 wad);
     /**
      * @notice `amt` outstanding `token` balance was flushed out to `usr`.
      * @param token The token address.
@@ -93,16 +107,19 @@ contract RwaSwapInputConduit2 {
         _;
     }
 
+    modifier onlyMate() {
+        require(may[msg.sender] == 1, "RwaSwapInputConduit2/not-mate");
+        _;
+    }
+
     /**
      * @notice Defines addresses and gives `msg.sender` admin access.
-     * @param _vat MCD Vat module address.
      * @param _psm PSM contract address.
      * @param _dai DAI contract address.
      * @param _gem GEM contract address.
      * @param _to RwaUrn contract address.
      */
     constructor(
-        address _vat,
         address _dai,
         address _gem,
         address _psm,
@@ -115,10 +132,10 @@ contract RwaSwapInputConduit2 {
         // We assume that DAI will alway have 18 decimals
         to18ConversionFactor = 10**_sub(18, GemAbstract(_gem).decimals());
 
-        vat = VatAbstract(_vat);
         psm = PsmAbstract(_psm);
         dai = DaiAbstract(_dai);
         gem = GemAbstract(_gem);
+
         to = _to;
 
         // Give unlimited approval to PSM gemjoin
@@ -150,22 +167,38 @@ contract RwaSwapInputConduit2 {
         emit Deny(usr);
     }
 
+    /**
+     * @notice Grants `usr` push access to this contract.
+     * @param usr The user address.
+     */
+    function mate(address usr) external auth {
+        may[usr] = 1;
+        emit Mate(usr);
+    }
+
+    /**
+     * @notice Revokes `usr` push access from this contract.
+     * @param usr The user address.
+     */
+    function hate(address usr) external auth {
+        may[usr] = 0;
+        emit Hate(usr);
+    }
+
     /*//////////////////////////////////
                Administration
     //////////////////////////////////*/
 
     /**
      * @notice Updates a contract parameter.
-     * @param what The changed parameter name. `"to"`, `"psm"`, `"recovery"`
+     * @param what The changed parameter name. `"to", "quitTo", "psm"`
      * @param data The new value of the parameter.
      */
     function file(bytes32 what, address data) external auth {
-        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
-
-        if (what == "to") {
+        if (what == "quitTo") {
+            quitTo = data;
+        } else if (what == "to") {
             to = data;
-        } else if (what == "recovery") {
-            recovery = data;
         } else if (what == "psm") {
             require(PsmAbstract(data).dai() == address(dai), "RwaSwapInputConduit2/wrong-dai-for-psm");
             require(
@@ -206,6 +239,23 @@ contract RwaSwapInputConduit2 {
     }
 
     /**
+     * @notice Flushes out any GEM balance to `quitTo` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
+     */
+    function quit() external onlyMate {
+        _doQuit(gem.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Flushes out the specified amount of GEM balance to `quitTo` address.
+     * @dev `msg.sender` must have received push access through `mate()`.
+     * @param amt Gem amount.
+     */
+    function quit(uint256 amt) external onlyMate {
+        _doQuit(amt);
+    }
+
+    /**
      * @notice Flushes out `amt` of `token` sitting in this contract to `usr` address.
      * @dev Can only be called by the admin.
      * @param token Token address.
@@ -217,8 +267,6 @@ contract RwaSwapInputConduit2 {
         address usr,
         uint256 amt
     ) external auth {
-        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
-
         GemAbstract(token).transfer(usr, amt);
         emit Yank(token, usr, amt);
     }
@@ -248,26 +296,21 @@ contract RwaSwapInputConduit2 {
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
-        require(vat.live() == 1, "RwaSwapInputConduit2/vat-not-live");
         require(to != address(0), "RwaSwapInputConduit2/invalid-to-address");
 
         psm.sellGem(to, amt);
         emit Push(to, expectedDaiWad(amt));
     }
 
-    /*//////////////////////////////////
-             Emergency Shutdown
-    //////////////////////////////////*/
-
     /**
-     * @notice Allows the `recovery` address to pull GEM from this contract after Emergency Shutdown.
-     * @dev This feature enables Dai holders to redeem any GEM tokens sitting in this contract as Emergency Shutdown happens.
+     * @notice Flushes out the specified amount of GEM to the `quitTo` address.
+     * @param amt GEM amount.
      */
-    function approveRecovery() external {
-        require(vat.live() == 0, "RwaSwapInputConduit2/vat-still-live");
-        require(recovery != address(0), "RwaSwapInputConduit2/recovery-not-set");
+    function _doQuit(uint256 amt) internal {
+        require(quitTo != address(0), "RwaSwapInputConduit2/invalid-quit-to-address");
 
-        gem.approve(recovery, type(uint256).max);
+        gem.transfer(quitTo, amt);
+        emit Quit(quitTo, amt);
     }
 
     /*//////////////////////////////////

@@ -66,7 +66,7 @@ abstract contract RwaConduits4TestAbstract is Test, DSMath {
 
         deal(address(dai), me, 2 * URN_INK);
 
-        inputConduit = new RwaSwapInputConduit2(address(vat), address(dai), address(gem), psm, testUrn);
+        inputConduit = new RwaSwapInputConduit2(address(dai), address(gem), psm, testUrn);
     }
 
     /*//////////////////////////////////

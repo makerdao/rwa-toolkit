@@ -472,6 +472,7 @@ contract RwaSwapInputConduitTest is Test, DSMath {
     }
 
     function testQuit() public {
+        inputConduit.mate(address(this));
         inputConduit.file("quitTo", address(this));
         usdx.transfer(address(inputConduit), USDX_MINT_AMOUNT);
 
@@ -487,7 +488,8 @@ contract RwaSwapInputConduitTest is Test, DSMath {
     }
 
     function testRevertOnQuitWhenQuitToAddressNotSet() public {
-        inputConduit.file("quitTo", address(0));
+        inputConduit.mate(address(this));
+
         assertEq(inputConduit.quitTo(), address(0));
 
         vm.expectRevert("RwaSwapInputConduit2/invalid-quit-to-address");
@@ -495,6 +497,9 @@ contract RwaSwapInputConduitTest is Test, DSMath {
     }
 
     function testQuitAmountFuzz(uint256 amt) public {
+        inputConduit.mate(address(this));
+        inputConduit.file("quitTo", address(this));
+
         assertEq(inputConduit.quitTo(), me);
         uint256 usdxBalance = usdx.balanceOf(me);
         usdx.transfer(address(inputConduit), usdxBalance);
@@ -512,6 +517,9 @@ contract RwaSwapInputConduitTest is Test, DSMath {
     }
 
     function testRevertOnQuitAmountMoreThenGemBalance() public {
+        inputConduit.mate(address(this));
+        inputConduit.file("quitTo", address(this));
+
         assertEq(usdx.balanceOf(address(inputConduit)), 0);
 
         vm.expectRevert("ds-token-insufficient-balance");

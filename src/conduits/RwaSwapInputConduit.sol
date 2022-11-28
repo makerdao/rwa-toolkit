@@ -47,7 +47,7 @@ contract RwaSwapInputConduit {
 
     /// @notice Addresses with admin access on this contract. `wards[usr]`
     mapping(address => uint256) public wards;
-    /// @notice Addresses with push access on this contract. `may[usr]`
+    /// @notice Addresses with push and quit access on this contract. `may[usr]`
     mapping(address => uint256) public may;
 
     /// @notice PSM contract address.

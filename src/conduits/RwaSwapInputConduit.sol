@@ -192,6 +192,7 @@ contract RwaSwapInputConduit {
 
     /**
      * @notice Updates a contract parameter.
+     * @dev `to` and `quitTo` can be set to `address(0)` to disable `push` and `quit` respectively.
      * @param what The changed parameter name. `"to", "quitTo", "psm"`
      * @param data The new value of the parameter.
      */
@@ -296,6 +297,7 @@ contract RwaSwapInputConduit {
 
     /**
      * @notice Swaps the specified amount of GEM into DAI through the PSM and push it into the recipient address.
+     * @dev If `to` is set to `address(0)`, if effectively means this methos is currently disabled.
      * @param amt GEM amount.
      */
     function _doPush(uint256 amt) internal {
@@ -307,6 +309,7 @@ contract RwaSwapInputConduit {
 
     /**
      * @notice Flushes out the specified amount of GEM to the `quitTo` address.
+     * @dev If `quitTo` is set to `address(0)`, if effectively means this method is currently disabled.
      * @param amt GEM amount.
      */
     function _doQuit(uint256 amt) internal {

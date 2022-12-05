@@ -29,13 +29,13 @@ import {Vow} from "dss/vow.sol";
 import {GemJoin, DaiJoin} from "dss/join.sol";
 import {Dai} from "dss/dai.sol";
 
-import {RwaOutputConduit3} from "./RwaOutputConduit3.sol";
-
 import {DssPsm} from "dss-psm/psm.sol";
 import {AuthGemJoin5} from "dss-psm/join-5-auth.sol";
 import {AuthGemJoin} from "dss-psm/join-auth.sol";
 
-contract RwaOutputConduit3Test is Test, DSMath {
+import {RwaSwapOutputConduit} from "./RwaSwapOutputConduit.sol";
+
+contract RwaSwapOutputConduitTest is Test, DSMath {
     address me;
 
     TestVat vat;
@@ -48,7 +48,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
     AuthGemJoin5 joinA;
     DssPsm psm;
-    RwaOutputConduit3 outputConduit;
+    RwaSwapOutputConduit outputConduit;
     address testUrn;
 
     bytes32 constant ilk = "USDX-A";
@@ -117,7 +117,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         setUpMCDandPSM();
 
         testUrn = vm.addr(420);
-        outputConduit = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
+        outputConduit = new RwaSwapOutputConduit(address(dai), address(usdx), address(psm));
         outputConduit.file("quitTo", address(testUrn));
         outputConduit.mate(me);
         outputConduit.hope(me);
@@ -132,7 +132,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         vm.expectEmit(true, false, false, false);
         emit Rely(address(this));
 
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
+        RwaSwapOutputConduit c = new RwaSwapOutputConduit(address(dai), address(usdx), address(psm));
 
         assertEq(c.wards(address(this)), 1);
     }
@@ -147,26 +147,26 @@ contract RwaOutputConduit3Test is Test, DSMath {
         DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
 
         vm.expectRevert("Math/sub-overflow");
-        new RwaOutputConduit3(address(dai), address(testGem), address(psmT));
+        new RwaSwapOutputConduit(address(dai), address(testGem), address(psmT));
     }
 
     function testRevertInvalidConstructorArguments() public {
         vm.expectRevert();
-        new RwaOutputConduit3(address(0), address(0), address(0));
+        new RwaSwapOutputConduit(address(0), address(0), address(0));
 
-        vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
-        new RwaOutputConduit3(address(0), address(usdx), address(psm));
+        vm.expectRevert("RwaSwapOutputConduit/wrong-dai-for-psm");
+        new RwaSwapOutputConduit(address(0), address(usdx), address(psm));
 
-        vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
-        new RwaOutputConduit3(address(dai), address(0), address(psm));
+        vm.expectRevert("RwaSwapOutputConduit/wrong-gem-for-psm");
+        new RwaSwapOutputConduit(address(dai), address(0), address(psm));
     }
 
     function testRevertOnPushWhenToAddressNotPicked() public {
-        RwaOutputConduit3 c = new RwaOutputConduit3(address(dai), address(usdx), address(psm));
+        RwaSwapOutputConduit c = new RwaSwapOutputConduit(address(dai), address(usdx), address(psm));
         c.mate(me);
         c.hope(me);
 
-        vm.expectRevert("RwaOutputConduit3/to-not-picked");
+        vm.expectRevert("RwaSwapOutputConduit/to-not-picked");
         c.push();
     }
 
@@ -283,72 +283,72 @@ contract RwaOutputConduit3Test is Test, DSMath {
         address newDaiJoin = address(new DaiJoin(address(vat), address(newDai)));
 
         address newPsm = address(new DssPsm(address(joinA), address(newDaiJoin), address(vow)));
-        vm.expectRevert("RwaOutputConduit3/wrong-dai-for-psm");
+        vm.expectRevert("RwaSwapOutputConduit/wrong-dai-for-psm");
         outputConduit.file(bytes32("psm"), newPsm);
 
         newPsm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
-        vm.expectRevert("RwaOutputConduit3/wrong-gem-for-psm");
+        vm.expectRevert("RwaSwapOutputConduit/wrong-gem-for-psm");
         outputConduit.file(bytes32("psm"), newPsm);
     }
 
     function testRevertOnFileUnrecognisedParam() public {
-        vm.expectRevert("RwaOutputConduit3/unrecognised-param");
+        vm.expectRevert("RwaSwapOutputConduit/unrecognised-param");
         outputConduit.file(bytes32("random"), address(0));
     }
 
     function testRevertOnUnauthorizedMethods() public {
         vm.startPrank(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.rely(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.deny(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.hope(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.nope(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.hate(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.mate(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.kiss(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.diss(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.file(bytes32("quitTo"), address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-authorized");
+        vm.expectRevert("RwaSwapOutputConduit/not-authorized");
         outputConduit.yank(address(0), me, 0);
     }
 
     function testRevertOnNotMateMethods() public {
         vm.startPrank(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-mate");
+        vm.expectRevert("RwaSwapOutputConduit/not-mate");
         outputConduit.push();
 
-        vm.expectRevert("RwaOutputConduit3/not-mate");
+        vm.expectRevert("RwaSwapOutputConduit/not-mate");
         outputConduit.quit();
     }
 
     function testRevertOnNotOperatorMethods() public {
         vm.startPrank(address(0));
 
-        vm.expectRevert("RwaOutputConduit3/not-operator");
+        vm.expectRevert("RwaSwapOutputConduit/not-operator");
         outputConduit.pick(address(0));
     }
 
     function testRevertOnPickAddressNotWhitelisted() public {
-        vm.expectRevert("RwaOutputConduit3/not-bud");
+        vm.expectRevert("RwaSwapOutputConduit/not-bud");
         outputConduit.pick(vm.addr(1));
     }
 
@@ -558,7 +558,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
     function testRevertOnPushAmountMoreThenBalance() public {
         assertEq(dai.balanceOf(address(outputConduit)), 0);
 
-        vm.expectRevert("RwaOutputConduit3/insufficient-swap-gem-amount");
+        vm.expectRevert("RwaSwapOutputConduit/insufficient-swap-gem-amount");
         outputConduit.push(1);
     }
 
@@ -571,7 +571,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
 
         assertEq(dai.balanceOf(address(outputConduit)), 500);
 
-        vm.expectRevert("RwaOutputConduit3/insufficient-swap-gem-amount");
+        vm.expectRevert("RwaSwapOutputConduit/insufficient-swap-gem-amount");
         outputConduit.push();
 
         assertEq(dai.balanceOf(address(outputConduit)), 500);
@@ -632,7 +632,7 @@ contract RwaOutputConduit3Test is Test, DSMath {
         outputConduit.file("quitTo", address(0));
         assertEq(outputConduit.quitTo(), address(0));
 
-        vm.expectRevert("RwaOutputConduit3/invalid-quit-to-address");
+        vm.expectRevert("RwaSwapOutputConduit/invalid-quit-to-address");
         outputConduit.quit();
     }
 

@@ -24,10 +24,9 @@ import "dss-interfaces/Interfaces.sol";
 
 import {DssPsm} from "dss-psm/psm.sol";
 
-import {RwaInputConduit3} from "./RwaInputConduit3.sol";
-import {RwaOutputConduit3} from "../conduits/RwaOutputConduit3.sol";
+import {RwaSwapInputConduit2} from "./RwaSwapInputConduit2.sol";
 
-abstract contract RwaConduits3TestAbstract is Test, DSMath {
+abstract contract RwaConduits4TestAbstract is Test, DSMath {
     // Define both in constructor of derived contract
     bytes32 ILK;
     address psm;
@@ -49,8 +48,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     uint256 PSM_TIN;
     uint256 PSM_TOUT;
 
-    RwaInputConduit3 inputConduit;
-    RwaOutputConduit3 outputConduit;
+    RwaSwapInputConduit2 inputConduit;
 
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
@@ -68,15 +66,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
 
         deal(address(dai), me, 2 * URN_INK);
 
-        inputConduit = new RwaInputConduit3(address(dai), address(gem), psm, testUrn);
-        outputConduit = new RwaOutputConduit3(address(dai), address(gem), psm);
-
-        inputConduit.mate(me);
-        outputConduit.mate(me);
-        outputConduit.hope(me);
-
-        outputConduit.kiss(me);
-        outputConduit.pick(me);
+        inputConduit = new RwaSwapInputConduit2(address(dai), address(gem), psm, testUrn);
     }
 
     /*//////////////////////////////////
@@ -139,59 +129,6 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
                Outnput Conduit Tests
     //////////////////////////////////*/
 
-    function testOutputConduitPush() public {
-        assertEq(outputConduit.to(), me);
-        uint256 daiAmount = URN_INK;
-
-        uint256 gemBalanceBefore = gem.balanceOf(me);
-        dai.transfer(address(outputConduit), daiAmount);
-
-        outputConduit.push();
-
-        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(daiAmount));
-        // We lose some dust because of decimals diff dai.decimals() > gem.decimals()
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
-        assertEq(outputConduit.to(), address(0));
-    }
-
-    function testOutputConduitPushAmountFuzz(uint256 wadAmt) public {
-        assertEq(outputConduit.to(), me);
-
-        dai.transfer(address(outputConduit), getDaiInAmount(URN_INK / GEM_DAI_DIFF_DECIMALS));
-        uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
-        uint256 gemBalance = gem.balanceOf(me);
-
-        wadAmt = bound(wadAmt, 10**18, cDaiBalance);
-
-        outputConduit.push(wadAmt);
-
-        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(wadAmt));
-        // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
-        assertApproxEqAbs(
-            dai.balanceOf(address(outputConduit)),
-            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(wadAmt)),
-            GEM_DAI_DIFF_DECIMALS
-        );
-        assertEq(outputConduit.to(), address(0));
-    }
-
-    function testRevertOutputConduitOnInsufficientGemAmountInPsm() public {
-        uint256 daiAmount = getDaiInAmount(URN_INK / GEM_DAI_DIFF_DECIMALS + 1 * GEM_DECIMALS); // more then INK
-
-        assertEq(gem.balanceOf(address(outputConduit)), 0);
-
-        dai.transfer(address(outputConduit), daiAmount);
-
-        assertEq(dai.balanceOf(address(outputConduit)), daiAmount);
-
-        vm.expectRevert();
-        // It will revert on vat.frob()
-        // urn.ink = _add(urn.ink, dink); // _add method will revert with empty message because ink < dink
-        outputConduit.push();
-
-        assertEq(dai.balanceOf(address(outputConduit)), daiAmount);
-    }
-
     function wad(uint256 rad_) internal pure returns (uint256) {
         return rad_ / 10**27;
     }
@@ -209,7 +146,7 @@ abstract contract RwaConduits3TestAbstract is Test, DSMath {
     }
 }
 
-contract RwaConduits3PsmUsdcIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmUsdcIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -221,7 +158,7 @@ contract RwaConduits3PsmUsdcIntegrationTest is RwaConduits3TestAbstract {
     }
 }
 
-contract RwaConduits3PsmPaxIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmPaxIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");
@@ -233,7 +170,7 @@ contract RwaConduits3PsmPaxIntegrationTest is RwaConduits3TestAbstract {
     }
 }
 
-contract RwaConduits3PsmGUSDIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmGUSDIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
@@ -257,7 +194,7 @@ contract RwaConduits3PsmGUSDIntegrationTest is RwaConduits3TestAbstract {
     }
 }
 
-contract RwaConduits3PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
@@ -296,7 +233,7 @@ contract RwaConduits3PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits3TestAb
     }
 }
 
-contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -324,7 +261,7 @@ contract RwaConduits3PsmUSDCWith5PercentFeeIntegrationTest is RwaConduits3TestAb
     }
 }
 
-contract RwaConduits3PsmPAXWith5PercentFeeIntegrationTest is RwaConduits3TestAbstract {
+contract RwaConduits4PsmPAXWith5PercentFeeIntegrationTest is RwaConduits4TestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");

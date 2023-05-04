@@ -1,10 +1,9 @@
 {
-  "name": "socgen-ofh-onboarding-prototype",
+  "name": "rwa-toolkit",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "git@github.com:ClioFinance/socgen-ofh-onboarding-prototype.git",
-  "author": "Henrique Barcelos <hbarcelos909@gmail.com>",
-  "license": "MIT",
+  "repository": "git@github.com:makerdao/rwa-toolkit.git",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "prepare": "husky install",
     "prepublishOnly": "copyfiles -u 1 \"./src/**/*.sol\" ./",

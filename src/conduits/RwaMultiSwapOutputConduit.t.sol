@@ -431,7 +431,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(conduit.psm(), address(psm));
         assertEq(conduit.gem(), address(usdx));
 
-        // pick zero address
+        // hook zero address
         vm.expectEmit(true, false, false, false);
         emit Hook(address(0));
         conduit.hook(address(0));
@@ -464,17 +464,20 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
     }
 
     function testPushAfterChangingPsm() public {
-        // Init new PSM
-        usdx.mint(USDX_MINT_AMOUNT);
+        uint256 mint_amount = 1000 * 10**12;
+        TestToken nst = new TestToken("NST", uint8(12));
 
-        AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(usdx));
+        // Init new PSM
+        nst.mint(mint_amount);
+
+        AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(nst));
         vat.rely(address(join));
         DssPsm newPsm = new DssPsm(address(join), address(daiJoin), address(vow));
         join.rely(address(newPsm));
         join.deny(me);
 
-        usdx.approve(address(join));
-        newPsm.sellGem(me, USDX_MINT_AMOUNT);
+        nst.approve(address(join));
+        newPsm.sellGem(me, mint_amount);
 
         // Change PSM
         outputConduit.clap(address(newPsm));
@@ -482,8 +485,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
 
         assertEq(outputConduit.to(), me);
         assertEq(outputConduit.psm(), address(newPsm));
-        assertEq(usdx.balanceOf(me), 0);
-        assertEq(usdx.balanceOf(address(outputConduit)), 0);
+        assertEq(nst.balanceOf(me), 0);
+        assertEq(nst.balanceOf(address(outputConduit)), 0);
         assertEq(dai.balanceOf(address(me)), 2_000 * WAD);
 
         dai.transfer(address(outputConduit), 500 * WAD);
@@ -491,12 +494,12 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(me), 1_500 * WAD);
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(newPsm), address(me), 500 * USDX_BASE_UNIT);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(newPsm), address(me), 500 * 10**12);
         outputConduit.push();
 
-        assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
-        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, USDX_DAI_CONVERSION_FACTOR);
+        assertEq(nst.balanceOf(address(me)), 500 * 10**12);
+        assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, 10**(18 - 12));
         assertEq(outputConduit.to(), address(0));
         assertEq(outputConduit.psm(), address(0));
     }

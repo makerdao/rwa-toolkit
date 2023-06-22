@@ -255,10 +255,7 @@ contract RwaMultiSwapOutputConduit {
 
         // Check if GEM decimals is not greater then DAI decimals. We assume that DAI will alway have 18 decimals
         // Does decimals should be less then 18, according to AuthGemJoin5 check (decimals < 18)
-        require(
-            GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals() <= 18,
-            "RwaMultiSwapOutputConduit/gem-decimals-overflow"
-        );
+        _sub(18, GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals());
 
         // Give unlimited approval to PSM
         dai.approve(_psm, type(uint256).max);
@@ -394,8 +391,8 @@ contract RwaMultiSwapOutputConduit {
     function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
-        uint256 to8ConversionFactor = PsmAbstract(psm).tout()), 10**_sub(18, GemAbstract(gem()).decimals();
-        return _mul(wad, WAD) / _mul(_add(WAD, to18ConversionFactor));
+        uint256 to18ConversionFactor = 10**_sub(18, GemAbstract(gem()).decimals());
+        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), to18ConversionFactor);
     }
 
     /**

@@ -168,7 +168,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
 
         RwaMultiSwapOutputConduit c = new RwaMultiSwapOutputConduit(address(dai));
 
-        vm.expectRevert("RwaMultiSwapOutputConduit/gem-decimals-overflow");
+        vm.expectRevert("Math/sub-overflow");
         c.clap(address(psmT));
     }
 
@@ -322,7 +322,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         stdstore.target(address(newGem)).sig("decimals()").checked_write(19);
         assertTrue(TestToken(newGem).decimals() == 19);
         newPsm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
-        vm.expectRevert("RwaMultiSwapOutputConduit/gem-decimals-overflow");
+        vm.expectRevert("Math/sub-overflow");
         outputConduit.clap(newPsm);
     }
 
@@ -468,7 +468,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         TestToken nst = new TestToken("NST", uint8(12));
 
         // Init new PSM
-        nst.mint(mint_amount);
+        nst.mint(mintAmount);
 
         AuthGemJoin5 join = new AuthGemJoin5(address(vat), ilk, address(nst));
         vat.rely(address(join));
@@ -477,7 +477,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         join.deny(me);
 
         nst.approve(address(join));
-        newPsm.sellGem(me, mint_amount);
+        newPsm.sellGem(me, mintAmount);
 
         // Change PSM
         outputConduit.clap(address(newPsm));

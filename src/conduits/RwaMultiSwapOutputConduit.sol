@@ -394,7 +394,8 @@ contract RwaMultiSwapOutputConduit {
     function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
-        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), 10**_sub(18, GemAbstract(gem()).decimals()));
+        uint256 to8ConversionFactor = PsmAbstract(psm).tout()), 10**_sub(18, GemAbstract(gem()).decimals();
+        return _mul(wad, WAD) / _mul(_add(WAD, to18ConversionFactor));
     }
 
     /**

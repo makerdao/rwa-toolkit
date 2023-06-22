@@ -228,6 +228,13 @@ contract RwaSwapConduitsPsmPaxIntegrationTest is RwaSwapConduitsTestAbstract {
     }
 
     function setUp() public override {
+        // We set DC manually as DC is currently 0
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        vat.file(ILK, "line", 500_000_000 * (10**45));
+
+        vm.stopPrank();
+
         super.setUp();
         deal(address(gem), me, 2 * MAX_GEM_SELL);
     }
@@ -331,6 +338,13 @@ contract RwaSwapConduitsPsmPAXWith5PercentFeeIntegrationTest is RwaSwapConduitsT
     }
 
     function setUp() public override {
+        // We set DC manually as DC is currently 0
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        vat.file(ILK, "line", 500_000_000 * (10**45));
+
+        vm.stopPrank();
+
         super.setUp();
 
         deal(address(gem), me, 2 * MAX_GEM_SELL);

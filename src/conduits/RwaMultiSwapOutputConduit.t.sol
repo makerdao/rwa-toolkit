@@ -464,7 +464,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
     }
 
     function testPushAfterChangingPsm() public {
-        uint256 mint_amount = 1000 * 10**12;
+        uint256 mintAmount = 1000 * 10**12;
         TestToken nst = new TestToken("NST", uint8(12));
 
         // Init new PSM

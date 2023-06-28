@@ -25,17 +25,11 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Lev Livnev <lev@liv.nev.org.uk>
  * @author 0xDecr1pto <0xDecr1pto@proton.me>
  * @title An Output Conduit for real-world assets (RWA).
- * @dev This contract differs from the original [RwaOutputConduit](https://github.com/makerdao/MIP21-RWA-Example/blob/fce06885ff89d10bf630710d4f6089c5bba94b4d/src/RwaConduit.sol#L41-L118):
- *  - The caller of `push()` is not required to hold MakerDAO governance tokens.
- *  - The `push()` method is permissioned.
- *  - `push()` permissions are managed by `mate()`/`hate()` methods.
- *  - The `push()` method swaps all DAI balance of the contract to GEM using the PSM.
- *  - The `push(uint256)` method swaps specified amount of DAI to GEM using the PSM.
- *  - Requires DAI, GEM and PSM addresses in the constructor.
- *      - DAI and GEM are immutable, PSM can be replaced as long as it uses the same DAI and GEM.
- *  - The `quit()` method allows moving outstanding DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `quit(uint256)` method allows moving the specified amount of DAI balance to `quitTo`. It can be called only by `mate`d addresses.
- *  - The `file` method allows updating `quitTo`, `psm` addresses. It can be called only by the admin.
+ * @dev This contract differs from the original [RwaSwapOutputConduit](https://github.com/makerdao/rwa-toolkit/blob/master/src/conduits/RwaSwapOutputConduit.sol):
+ * - This conduit can handle multiple PSM. (`pal` whitelist of PSM's)
+ * - Using `clap/slap` for managing the PSM whitelist.
+ * - Using `hook` method for choosing PSM address. (PSM address should be whitelisted)
+ * - `push` and `push(amt)` swap DAI to GEM using selected (`hooked`) PSM address.
  */
 contract RwaMultiSwapOutputConduit {
     /// @notice DAI token contract address.

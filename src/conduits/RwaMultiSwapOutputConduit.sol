@@ -248,7 +248,8 @@ contract RwaMultiSwapOutputConduit {
     function clap(address _psm) external auth {
         require(PsmAbstract(_psm).dai() == address(dai), "RwaMultiSwapOutputConduit/wrong-dai-for-psm");
 
-        // Check if GEM decimals is not greater then DAI decimals. We assume that DAI will alway have 18 decimals
+        // Check if GEM `decimals` is not greater then DAI decimals.
+        // We assume that DAI will always have 18 decimals
         require(
             GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals() <= 18,
             "RwaMultiSwapOutputConduit/unsupported-gem-decimal"

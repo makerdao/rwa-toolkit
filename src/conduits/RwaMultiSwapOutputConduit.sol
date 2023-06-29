@@ -252,7 +252,7 @@ contract RwaMultiSwapOutputConduit {
         // We assume that DAI will always have 18 decimals
         require(
             GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals() <= 18,
-            "RwaMultiSwapOutputConduit/unsupported-gem-decimal"
+            "RwaMultiSwapOutputConduit/unsupported-gem-decimals"
         );
 
         // Give unlimited approval to PSM

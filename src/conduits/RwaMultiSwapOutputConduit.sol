@@ -382,6 +382,7 @@ contract RwaMultiSwapOutputConduit {
     function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
+        // according to AuthGemJoin5 check (decimals < 18) it won't overflow
         uint256 to18ConversionFactor = 10**(18 - uint256(GemAbstract(gem()).decimals()));
 
         return (wad * WAD) / ((WAD + PsmAbstract(psm).tout()) * to18ConversionFactor);
@@ -395,6 +396,7 @@ contract RwaMultiSwapOutputConduit {
     function requiredDaiWad(uint256 amt) external view returns (uint256 wad) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
+        // according to AuthGemJoin5 check (decimals < 18) it won't overflow
         uint256 amt18 = amt * 10**(18 - uint256(GemAbstract(gem()).decimals()));
         uint256 fee = (amt18 * PsmAbstract(psm).tout()) / WAD;
 
@@ -407,7 +409,6 @@ contract RwaMultiSwapOutputConduit {
      */
     function _doPush(uint256 wad) internal {
         require(to != address(0), "RwaMultiSwapOutputConduit/to-not-picked");
-        require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
         uint256 gemAmt = expectedGemAmt(wad);

@@ -20,7 +20,6 @@ pragma solidity 0.6.12;
 
 import "forge-std/Test.sol";
 import "ds-token/token.sol";
-import "ds-math/math.sol";
 import "ds-value/value.sol";
 
 import {Vat} from "dss/vat.sol";

@@ -160,6 +160,17 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.allowance(address(c), address(psm)), 0);
     }
 
+    function testRevertOnClapWithGemUnssuportedDecimals() public {
+        TestToken testGem = new TestToken("USDX", 19);
+        AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
+        DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
+
+        RwaMultiSwapOutputConduit c = new RwaMultiSwapOutputConduit(address(dai));
+
+        vm.expectRevert("RwaMultiSwapOutputConduit/unsupported-gem-decimal");
+        c.clap(address(psmT));
+    }
+
     function testResetPsmWhenSlapHookedPsm() public {
         RwaMultiSwapOutputConduit c = new RwaMultiSwapOutputConduit(address(dai));
         c.hope(address(this));

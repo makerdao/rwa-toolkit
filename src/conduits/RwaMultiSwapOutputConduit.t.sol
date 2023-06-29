@@ -72,7 +72,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
     event Clap(address indexed psm);
     event Slap(address indexed psm);
     event Hook(address indexed psm);
-    event Push(address indexed psm, address indexed to, uint256 wad);
+    event Push(address indexed psm, address indexed gem, address indexed to, uint256 wad);
     event File(bytes32 indexed what, address data);
     event Quit(address indexed quitTo, uint256 wad);
     event Yank(address indexed token, address indexed usr, uint256 amt);
@@ -161,15 +161,19 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.allowance(address(c), address(psm)), 0);
     }
 
-    function testRevertOnGemUnssuportedDecimals() public {
-        TestToken testGem = new TestToken("USDX", 19);
-        AuthGemJoin testJoin = new AuthGemJoin(address(vat), "TCOIN", address(testGem));
-        DssPsm psmT = new DssPsm(address(testJoin), address(daiJoin), address(vow));
-
+    function testResetPsmWhenSlapHookedPsm() public {
         RwaMultiSwapOutputConduit c = new RwaMultiSwapOutputConduit(address(dai));
+        c.hope(address(this));
+        c.clap(address(psm));
+        c.hook(address(psm));
 
-        vm.expectRevert("Math/sub-overflow");
-        c.clap(address(psmT));
+        assertEq(c.psm(), address(psm));
+
+        c.slap(address(psm));
+
+        assertEq(c.psm(), address(0));
+
+        assertEq(dai.allowance(address(c), address(psm)), 0);
     }
 
     function testRevertInvalidConstructorArguments() public {
@@ -309,20 +313,12 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(outputConduit.quitTo(), quitToAddress);
     }
 
-    function testRevertOnClapPsmWithWrongDaiAddressesOrGemDecimals() public {
-        address newGem = address(new TestToken("GEM", 17));
-        address joinNew = address(new AuthGemJoin5(address(vat), bytes32("GEM-A"), newGem));
+    function testRevertOnClapPsmWithWrongDaiAddresses() public {
         address newDai = address(new Dai(0));
         address newDaiJoin = address(new DaiJoin(address(vat), address(newDai)));
 
         address newPsm = address(new DssPsm(address(joinA), address(newDaiJoin), address(vow)));
         vm.expectRevert("RwaMultiSwapOutputConduit/wrong-dai-for-psm");
-        outputConduit.clap(newPsm);
-
-        stdstore.target(address(newGem)).sig("decimals()").checked_write(19);
-        assertTrue(TestToken(newGem).decimals() == 19);
-        newPsm = address(new DssPsm(address(joinNew), address(daiJoin), address(vow)));
-        vm.expectRevert("Math/sub-overflow");
         outputConduit.clap(newPsm);
     }
 
@@ -452,8 +448,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(me), 500 * WAD);
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), 500 * USDX_BASE_UNIT);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
@@ -495,7 +491,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, true, true);
-        emit Push(address(newPsm), address(me), 500 * 10**12);
+        emit Push(address(newPsm), address(nst), address(me), 500 * 10**12);
         outputConduit.push();
 
         assertEq(nst.balanceOf(address(me)), 500 * 10**12);
@@ -520,7 +516,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
         vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), 500 * USDX_BASE_UNIT);
+        emit Push(address(psm), address(usdx), address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push(500 * WAD);
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
@@ -545,8 +541,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(me), 500 * WAD);
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), 500 * USDX_BASE_UNIT);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), 500 * USDX_BASE_UNIT);
         outputConduit.push();
 
         assertEq(usdx.balanceOf(address(me)), 500 * USDX_BASE_UNIT);
@@ -566,8 +562,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(dai.balanceOf(me), 500 * WAD);
         assertEq(dai.balanceOf(address(outputConduit)), 500 * WAD);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), 400 * USDX_BASE_UNIT);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), 400 * USDX_BASE_UNIT);
         // Push only 400 DAI; leave 100 DAI in conduit
         outputConduit.push(400 * WAD);
 
@@ -586,8 +582,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
 
         wad = bound(wad, 1 * WAD, cDaiBalance);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), wad / USDX_DAI_CONVERSION_FACTOR);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), wad / USDX_DAI_CONVERSION_FACTOR);
         outputConduit.push(wad);
 
         assertEq(usdx.balanceOf(me), usdxBalance + wad / USDX_DAI_CONVERSION_FACTOR);
@@ -607,8 +603,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         wad = bound(wad, 1 * WAD, cDaiBalance);
         uint256 expectedGem = outputConduit.expectedGemAmt(wad);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), expectedGem);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), expectedGem);
         outputConduit.push(wad);
 
         assertEq(usdx.balanceOf(me), usdxBalance + expectedGem);
@@ -636,8 +632,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         uint256 cDaiBalance = dai.balanceOf(address(outputConduit));
         uint256 usdxBalance = usdx.balanceOf(me);
 
-        vm.expectEmit(true, true, false, false);
-        emit Push(address(psm), address(me), amt);
+        vm.expectEmit(true, true, true, true);
+        emit Push(address(psm), address(usdx), address(me), amt);
         outputConduit.push(requiredDai);
 
         assertEq(usdx.balanceOf(me), usdxBalance + amt);

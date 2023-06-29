@@ -116,10 +116,11 @@ contract RwaMultiSwapOutputConduit {
     /**
      * @notice `amt` amount of GEM was pushed to the recipient `to` using `psm`.
      * @param psm PSM address used for swap.
+     * @param gem GEM token address used.
      * @param to Destination address for GEM.
      * @param amt The amount of GEM.
      */
-    event Push(address indexed psm, address indexed to, uint256 amt);
+    event Push(address indexed psm, address indexed gem, address indexed to, uint256 amt);
     /**
      * @notice A contract parameter was updated.
      * @param what The changed parameter name. Currently the supported values are: "quitTo", "psm".
@@ -246,10 +247,6 @@ contract RwaMultiSwapOutputConduit {
      */
     function clap(address _psm) external auth {
         require(PsmAbstract(_psm).dai() == address(dai), "RwaMultiSwapOutputConduit/wrong-dai-for-psm");
-
-        // Check if GEM decimals is not greater then DAI decimals. We assume that DAI will alway have 18 decimals
-        // Does decimals should be less then 18, according to AuthGemJoin5 check (decimals < 18)
-        _sub(18, GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals());
 
         // Give unlimited approval to PSM
         dai.approve(_psm, type(uint256).max);
@@ -385,8 +382,9 @@ contract RwaMultiSwapOutputConduit {
     function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
-        uint256 to18ConversionFactor = 10**_sub(18, GemAbstract(gem()).decimals());
-        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), to18ConversionFactor);
+        uint256 to18ConversionFactor = 10**(18 - uint256(GemAbstract(gem()).decimals()));
+
+        return (wad * WAD) / ((WAD + PsmAbstract(psm).tout()) * to18ConversionFactor);
     }
 
     /**
@@ -397,9 +395,10 @@ contract RwaMultiSwapOutputConduit {
     function requiredDaiWad(uint256 amt) external view returns (uint256 wad) {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
-        uint256 amt18 = _mul(amt, 10**_sub(18, GemAbstract(gem()).decimals()));
-        uint256 fee = _mul(amt18, PsmAbstract(psm).tout()) / WAD;
-        return _add(amt18, fee);
+        uint256 amt18 = amt * 10**(18 - uint256(GemAbstract(gem()).decimals()));
+        uint256 fee = (amt18 * PsmAbstract(psm).tout()) / WAD;
+
+        return amt18 + fee;
     }
 
     /**
@@ -416,11 +415,12 @@ contract RwaMultiSwapOutputConduit {
 
         address recipient = to;
         address _psm = psm;
+        address _gem = gem();
         to = address(0);
         psm = address(0);
 
         PsmAbstract(_psm).buyGem(recipient, gemAmt);
-        emit Push(_psm, recipient, gemAmt);
+        emit Push(_psm, _gem, recipient, gemAmt);
     }
 
     /**
@@ -439,16 +439,4 @@ contract RwaMultiSwapOutputConduit {
     //////////////////////////////////*/
 
     uint256 internal constant WAD = 10**18;
-
-    function _add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x, "Math/add-overflow");
-    }
-
-    function _sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "Math/sub-overflow");
-    }
-
-    function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
-    }
 }

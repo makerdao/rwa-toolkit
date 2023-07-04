@@ -30,6 +30,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * - Using `clap/slap` for managing the PSM whitelist.
  * - Using `hook` method for choosing PSM address. (PSM address should be whitelisted)
  * - `push` and `push(amt)` swap DAI to GEM using selected (`hooked`) PSM address.
+ * - It's not possible to make `pick` and `push` permissionless by `hope`ing and `mate`ing `address(0)`. We realized that output conduits should never be permissionless.
  */
 contract RwaMultiSwapOutputConduit {
     /// @notice DAI token contract address.

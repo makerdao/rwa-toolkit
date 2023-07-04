@@ -404,6 +404,7 @@ contract RwaMultiSwapOutputConduit {
         if (psm == address(0)) return 0;
 
         uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
+        // If `psm` set, its gem is guaranteed to have 18 decimals or less.
         uint256 amt18 = _mul(amt, 10**(18 - decimals));
         uint256 fee = _mul(amt18, PsmAbstract(psm).tout()) / WAD;
         return _add(amt18, fee);

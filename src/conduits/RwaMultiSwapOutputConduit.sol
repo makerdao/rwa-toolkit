@@ -147,7 +147,12 @@ contract RwaMultiSwapOutputConduit {
     }
 
     modifier onlyMate() {
-        require(may[msg.sender] == 1 || may[address(0)] == 1, "RwaMultiSwapOutputConduit/not-mate");
+        require(may[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-mate");
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
         _;
     }
 
@@ -298,8 +303,7 @@ contract RwaMultiSwapOutputConduit {
      * @param who Recipient address.
      * @dev `who` address should have been whitelisted using `kiss`.
      */
-    function pick(address who) external {
-        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
+    function pick(address who) external onlyOperator {
         require(bud[who] == 1 || who == address(0), "RwaMultiSwapOutputConduit/not-bud");
         to = who;
         emit Pick(who);
@@ -310,8 +314,7 @@ contract RwaMultiSwapOutputConduit {
      * @param _psm PSM address.
      * @dev `psm` address should have been whitelisted using `clap`.
      */
-    function hook(address _psm) external {
-        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
+    function hook(address _psm) external onlyOperator {
         require(pal[_psm] == 1 || _psm == address(0), "RwaMultiSwapOutputConduit/not-pal");
 
         psm = _psm;
@@ -378,7 +381,7 @@ contract RwaMultiSwapOutputConduit {
      * @return gem Gem address.
      */
     function gem() external view returns (address) {
-        return psm != address(0) ? GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem() : address(0);
+        return psm == address(0) ? address(0) : GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem();
     }
 
     /**

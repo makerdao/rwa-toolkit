@@ -274,8 +274,8 @@ contract RwaMultiSwapOutputConduit {
      */
     function slap(address _psm) external auth {
         dai.approve(address(_psm), 0);
-        if (psm == _psm) psm = address(0);
 
+        if (psm == _psm) psm = address(0);
         pal[_psm] = 0;
         emit Slap(_psm);
     }

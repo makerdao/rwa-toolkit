@@ -167,7 +167,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
 
         RwaMultiSwapOutputConduit c = new RwaMultiSwapOutputConduit(address(dai));
 
-        vm.expectRevert("RwaMultiSwapOutputConduit/unsupported-gem-decimal");
+        vm.expectRevert("RwaMultiSwapOutputConduit/unsupported-gem-decimals");
         c.clap(address(psmT));
     }
 

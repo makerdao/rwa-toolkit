@@ -390,7 +390,7 @@ contract RwaMultiSwapOutputConduit {
         if (psm == address(0)) return 0;
 
         uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
-        uint256 to18ConversionFactor = 10**_sub(18, decimals);
+        uint256 to18ConversionFactor = 10**(18 - decimals);
         return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), to18ConversionFactor);
     }
 
@@ -403,7 +403,7 @@ contract RwaMultiSwapOutputConduit {
         if (psm == address(0)) return 0;
 
         uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
-        uint256 amt18 = _mul(amt, 10**_sub(18, decimals));
+        uint256 amt18 = _mul(amt, 10**(18 - decimals));
         uint256 fee = _mul(amt18, PsmAbstract(psm).tout()) / WAD;
         return _add(amt18, fee);
     }

@@ -20,6 +20,7 @@ import "forge-std/Test.sol";
 import "ds-token/token.sol";
 import "ds-value/value.sol";
 import "dss-interfaces/Interfaces.sol";
+import "ds-math/math.sol";
 
 import {DssPsm} from "dss-psm/psm.sol";
 
@@ -141,15 +142,15 @@ abstract contract RwaMultiSwapOutputConduitsTestAbstract is Test, DSMath {
     }
 
     function getDaiInAmount(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = gemAmt * GEM_DAI_DIFF_DECIMALS;
-        uint256 fee = (gemAmt18 * PSM_TOUT) / WAD;
-        return gemAmt18 + fee;
+        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TOUT) / WAD;
+        return add(gemAmt18, fee);
     }
 
     function gemToDai(uint256 gemAmt) internal view returns (uint256) {
-        uint256 gemAmt18 = gemAmt * GEM_DAI_DIFF_DECIMALS;
-        uint256 fee = (gemAmt18 * PSM_TIN) / WAD;
-        return gemAmt18 - fee;
+        uint256 gemAmt18 = mul(gemAmt, GEM_DAI_DIFF_DECIMALS);
+        uint256 fee = mul(gemAmt18, PSM_TIN) / WAD;
+        return sub(gemAmt18, fee);
     }
 }
 

@@ -25,7 +25,7 @@ import {GemJoinAbstract} from "dss-interfaces/dss/GemJoinAbstract.sol";
  * @author Lev Livnev <lev@liv.nev.org.uk>
  * @author 0xDecr1pto <0xDecr1pto@proton.me>
  * @title An Output Conduit for real-world assets (RWA).
- * @dev This contract differs from the original [RwaSwapOutputConduit](https://github.com/makerdao/rwa-toolkit/blob/master/src/conduits/RwaSwapOutputConduit.sol):
+ * @dev This contract differs from the original [RwaSwapOutputConduit](https://github.com/makerdao/rwa-toolkit/blob/92c79aac24ef7645902ce4be57ba41b19e6c7dd5/src/conduits/RwaSwapOutputConduit.sol):
  * - This conduit can handle multiple PSM. (`pal` whitelist of PSM's)
  * - Using `clap/slap` for managing the PSM whitelist.
  * - Using `hook` method for choosing PSM address. (PSM address should be whitelisted)
@@ -298,7 +298,7 @@ contract RwaMultiSwapOutputConduit {
      * @dev `who` address should have been whitelisted using `kiss`.
      */
     function pick(address who) external {
-        require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaMultiSwapOutputConduit/not-operator");
+        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
         require(bud[who] == 1 || who == address(0), "RwaMultiSwapOutputConduit/not-bud");
         to = who;
         emit Pick(who);
@@ -310,7 +310,7 @@ contract RwaMultiSwapOutputConduit {
      * @dev `psm` address should have been whitelisted using `clap`.
      */
     function hook(address _psm) external {
-        require(can[msg.sender] == 1 || can[address(0)] == 1, "RwaMultiSwapOutputConduit/not-operator");
+        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
         require(pal[_psm] == 1 || _psm == address(0), "RwaMultiSwapOutputConduit/not-pal");
 
         psm = _psm;
@@ -376,7 +376,7 @@ contract RwaMultiSwapOutputConduit {
      * @notice Return Gem address of the selected PSM
      * @return gem Gem address.
      */
-    function gem() public view returns (address) {
+    function gem() external view returns (address) {
         return psm != address(0) ? GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem() : address(0);
     }
 
@@ -386,12 +386,11 @@ contract RwaMultiSwapOutputConduit {
      * @return amt Expected GEM amount.
      */
     function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
-        require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
+        if (psm == address(0)) return 0;
 
-        // We ensure the subtraction below will not overflow in `clap`
-        uint256 to18ConversionFactor = 10**(18 - uint256(GemAbstract(gem()).decimals()));
-
-        return (wad * WAD) / ((WAD + PsmAbstract(psm).tout()) * to18ConversionFactor);
+        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
+        uint256 to18ConversionFactor = 10**_sub(18, decimals);
+        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), to18ConversionFactor);
     }
 
     /**
@@ -400,13 +399,12 @@ contract RwaMultiSwapOutputConduit {
      * @return wad Required DAI amount.
      */
     function requiredDaiWad(uint256 amt) external view returns (uint256 wad) {
-        require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
+        if (psm == address(0)) return 0;
 
-        // We ensure the subtraction below will not overflow in `clap`
-        uint256 amt18 = amt * 10**(18 - uint256(GemAbstract(gem()).decimals()));
-        uint256 fee = (amt18 * PsmAbstract(psm).tout()) / WAD;
-
-        return amt18 + fee;
+        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
+        uint256 amt18 = _mul(amt, 10**_sub(18, decimals));
+        uint256 fee = _mul(amt18, PsmAbstract(psm).tout()) / WAD;
+        return _add(amt18, fee);
     }
 
     /**
@@ -415,6 +413,7 @@ contract RwaMultiSwapOutputConduit {
      */
     function _doPush(uint256 wad) internal {
         require(to != address(0), "RwaMultiSwapOutputConduit/to-not-picked");
+        require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
         uint256 gemAmt = expectedGemAmt(wad);
@@ -422,7 +421,7 @@ contract RwaMultiSwapOutputConduit {
 
         address recipient = to;
         address _psm = psm;
-        address _gem = gem();
+        address _gem = GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem();
         to = address(0);
         psm = address(0);
 
@@ -446,4 +445,16 @@ contract RwaMultiSwapOutputConduit {
     //////////////////////////////////*/
 
     uint256 internal constant WAD = 10**18;
+
+    function _add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "Math/add-overflow");
+    }
+
+    function _sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "Math/sub-overflow");
+    }
+
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x, "Math/mul-overflow");
+    }
 }

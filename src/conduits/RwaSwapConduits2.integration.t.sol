@@ -184,6 +184,13 @@ contract RwaConduits4PsmGUSDIntegrationTest is RwaConduits4TestAbstract {
     }
 
     function setUp() public override {
+        // We set DC manually as DC is currently maxed
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        vat.file(ILK, "line", 700_000_000 * (10**45));
+
+        vm.stopPrank();
+
         super.setUp();
 
         // Add GUSD blance
@@ -208,6 +215,13 @@ contract RwaConduits4PsmGUSDWith5PercentFeeIntegrationTest is RwaConduits4TestAb
     }
 
     function setUp() public override {
+        // We set DC manually as DC is currently maxed
+        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
+
+        vat.file(ILK, "line", 700_000_000 * (10**45));
+
+        vm.stopPrank();
+
         super.setUp();
 
         // Add GUSD blance

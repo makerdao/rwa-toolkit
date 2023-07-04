@@ -601,6 +601,14 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_CONVERSION_FACTOR);
     }
 
+    function testExpectedGemAmtWhenPsmNotHooked() public {
+        outputConduit.slap(address(psm));
+
+        uint256 expectedGem = outputConduit.expectedGemAmt(100 * WAD);
+
+        assertEq(expectedGem, 0);
+    }
+
     function testExpectedGemAmtFuzz(uint256 wad) public {
         psm.file("tout", (1 * WAD) / 100); // add 1% fee
 
@@ -625,6 +633,14 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
             cDaiBalance - outputConduit.requiredDaiWad(expectedGem),
             USDX_DAI_CONVERSION_FACTOR
         );
+    }
+
+    function testRequiredDaiWadWhenPsmNotHooked() public {
+        outputConduit.slap(address(psm));
+
+        uint256 requiredDai = outputConduit.requiredDaiWad(100 * WAD);
+
+        assertEq(requiredDai, 0);
     }
 
     function testRequiredDaiWadFuzz(uint256 amt) public {

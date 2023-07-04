@@ -146,13 +146,13 @@ contract RwaMultiSwapOutputConduit {
         _;
     }
 
-    modifier onlyMate() {
-        require(may[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-mate");
+    modifier onlyOperator() {
+        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
         _;
     }
 
-    modifier onlyOperator() {
-        require(can[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-operator");
+    modifier onlyMate() {
+        require(may[msg.sender] == 1, "RwaMultiSwapOutputConduit/not-mate");
         _;
     }
 

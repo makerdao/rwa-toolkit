@@ -387,30 +387,29 @@ contract RwaMultiSwapOutputConduit {
 
     /**
      * @notice Calculates the amount of GEM received for swapping `wad` of DAI.
+     * @param _psm The PSM instance.
      * @param wad DAI amount.
      * @return amt Expected GEM amount.
      */
-    function expectedGemAmt(uint256 wad) public view returns (uint256 amt) {
-        if (psm == address(0)) return 0;
-
-        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
-        // If `psm` set, its gem is guaranteed to have 18 decimals or less.
-        uint256 to18ConversionFactor = 10**(18 - decimals);
-        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(psm).tout()), to18ConversionFactor);
+    function expectedGemAmt(address _psm, uint256 wad) public view returns (uint256 amt) {
+        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals();
+        // By using any PSM, we cannot guarantee its gem has 18 decimals or less, so we need SafeMath.
+        uint256 to18ConversionFactor = 10**_sub(18, decimals);
+        return _mul(wad, WAD) / _mul(_add(WAD, PsmAbstract(_psm).tout()), to18ConversionFactor);
     }
 
     /**
      * @notice Calculates the required amount of DAI to get `amt` amount of GEM.
+     * @param _psm The PSM instance.
      * @param amt GEM amount.
      * @return wad Required DAI amount.
      */
-    function requiredDaiWad(uint256 amt) external view returns (uint256 wad) {
-        if (psm == address(0)) return 0;
-
-        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(psm).gemJoin()).gem()).decimals();
-        // If `psm` set, its gem is guaranteed to have 18 decimals or less.
-        uint256 amt18 = _mul(amt, 10**(18 - decimals));
-        uint256 fee = _mul(amt18, PsmAbstract(psm).tout()) / WAD;
+    function requiredDaiWad(address _psm, uint256 amt) external view returns (uint256 wad) {
+        uint256 decimals = GemAbstract(GemJoinAbstract(PsmAbstract(_psm).gemJoin()).gem()).decimals();
+        // By using any PSM, we cannot guarantee its gem has 18 decimals or less, so we need SafeMath.
+        uint256 to18ConversionFactor = 10**_sub(18, decimals);
+        uint256 amt18 = _mul(amt, to18ConversionFactor);
+        uint256 fee = _mul(amt18, PsmAbstract(_psm).tout()) / WAD;
         return _add(amt18, fee);
     }
 
@@ -423,7 +422,7 @@ contract RwaMultiSwapOutputConduit {
         require(psm != address(0), "RwaMultiSwapOutputConduit/psm-not-hooked");
 
         // We might lose some dust here because of rounding errors. I.e.: USDC has 6 dec and DAI has 18.
-        uint256 gemAmt = expectedGemAmt(wad);
+        uint256 gemAmt = expectedGemAmt(psm, wad);
         require(gemAmt > 0, "RwaMultiSwapOutputConduit/insufficient-swap-gem-amount");
 
         address recipient = to;

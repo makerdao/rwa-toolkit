@@ -92,7 +92,7 @@ abstract contract RwaMultiSwapOutputConduitsTestAbstract is Test, DSMath {
         outputConduit.push();
 
         outputConduit.hook(address(psm));
-        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(daiAmount));
+        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(address(psm), daiAmount));
         // We lose some dust because of decimals diff dai.decimals() > gem.decimals()
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
@@ -110,11 +110,11 @@ abstract contract RwaMultiSwapOutputConduitsTestAbstract is Test, DSMath {
         outputConduit.push(wadAmt);
 
         outputConduit.hook(address(psm));
-        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(wadAmt));
+        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(address(psm), wadAmt));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
-            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(wadAmt)),
+            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(address(psm), wadAmt)),
             GEM_DAI_DIFF_DECIMALS
         );
         assertEq(outputConduit.to(), address(0));

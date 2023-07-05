@@ -601,14 +601,6 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), cDaiBalance - wad, USDX_DAI_CONVERSION_FACTOR);
     }
 
-    function testExpectedGemAmtWhenPsmNotHooked() public {
-        outputConduit.slap(address(psm));
-
-        uint256 expectedGem = outputConduit.expectedGemAmt(100 * WAD);
-
-        assertEq(expectedGem, 0);
-    }
-
     function testExpectedGemAmtFuzz(uint256 wad) public {
         psm.file("tout", (1 * WAD) / 100); // add 1% fee
 
@@ -619,7 +611,7 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         uint256 usdxBalance = usdx.balanceOf(me);
 
         wad = bound(wad, 1 * WAD, cDaiBalance);
-        uint256 expectedGem = outputConduit.expectedGemAmt(wad);
+        uint256 expectedGem = outputConduit.expectedGemAmt(address(psm), wad);
 
         vm.expectEmit(true, true, true, true);
         emit Push(address(psm), address(usdx), address(me), expectedGem);
@@ -630,17 +622,9 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         outputConduit.hook(address(psm));
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
-            cDaiBalance - outputConduit.requiredDaiWad(expectedGem),
+            cDaiBalance - outputConduit.requiredDaiWad(address(psm), expectedGem),
             USDX_DAI_CONVERSION_FACTOR
         );
-    }
-
-    function testRequiredDaiWadWhenPsmNotHooked() public {
-        outputConduit.slap(address(psm));
-
-        uint256 requiredDai = outputConduit.requiredDaiWad(100 * WAD);
-
-        assertEq(requiredDai, 0);
     }
 
     function testRequiredDaiWadFuzz(uint256 amt) public {
@@ -650,8 +634,8 @@ contract RwaMultiSwapOutputConduitTest is Test, DSMath {
         assertEq(outputConduit.psm(), address(psm));
         uint256 daiBalance = dai.balanceOf(me);
 
-        amt = bound(amt, 1 * USDX_BASE_UNIT, outputConduit.expectedGemAmt(daiBalance));
-        uint256 requiredDai = outputConduit.requiredDaiWad(amt);
+        amt = bound(amt, 1 * USDX_BASE_UNIT, outputConduit.expectedGemAmt(address(psm), daiBalance));
+        uint256 requiredDai = outputConduit.requiredDaiWad(address(psm), amt);
 
         dai.transfer(address(outputConduit), requiredDai);
 

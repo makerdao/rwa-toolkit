@@ -47,3 +47,5 @@ jobs:
         run: |
           forge test -vvv --fork-url $FORK_URL --match-path "**.integration.t.sol"
         id: test-fork
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}

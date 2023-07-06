@@ -8,6 +8,7 @@
 - `RwaOutputConduit`: disburses DAI.
 - `RwaOutputConduit2`: variation of `RwaOutputConduit` with a whitelist to control permissions to disburse DAI.
 - `RwaSwapOutputConduit`: variation of `RwaOutputConduit` for swapping DAI to GEM through a PSM.
+- `RwaMultiSwapOutputConduit`: variation of `RwaSwapOutputConduit` which can handle multiple PSM's.
 - `RwaInputConduit`: repays DAI.
 - `RwaInputConduit2`: variation of `RwaInputConduit` with a whitelist to control permissions to repay DAI.
 - `RwaSwapInputConduit`: variation of `RwaInputConduit` for swapping GEM to DAI through a PSM.

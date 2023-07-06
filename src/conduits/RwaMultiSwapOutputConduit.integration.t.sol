@@ -18,16 +18,15 @@ pragma solidity 0.6.12;
 
 import "forge-std/Test.sol";
 import "ds-token/token.sol";
-import "ds-math/math.sol";
 import "ds-value/value.sol";
 import "dss-interfaces/Interfaces.sol";
+import "ds-math/math.sol";
 
 import {DssPsm} from "dss-psm/psm.sol";
 
-import {RwaSwapInputConduit} from "./RwaSwapInputConduit.sol";
-import {RwaSwapOutputConduit} from "../conduits/RwaSwapOutputConduit.sol";
+import {RwaMultiSwapOutputConduit} from "../conduits/RwaMultiSwapOutputConduit.sol";
 
-abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
+abstract contract RwaMultiSwapOutputConduitsTestAbstract is Test, DSMath {
     // Define both in constructor of derived contract
     bytes32 ILK;
     address psm;
@@ -49,8 +48,7 @@ abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
     uint256 PSM_TIN;
     uint256 PSM_TOUT;
 
-    RwaSwapInputConduit inputConduit;
-    RwaSwapOutputConduit outputConduit;
+    RwaMultiSwapOutputConduit outputConduit;
 
     function setUp() public virtual {
         dai = DaiAbstract(DssPsm(psm).dai());
@@ -68,71 +66,16 @@ abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
 
         deal(address(dai), me, 2 * URN_INK);
 
-        inputConduit = new RwaSwapInputConduit(address(dai), address(gem), psm, testUrn);
-        outputConduit = new RwaSwapOutputConduit(address(dai), address(gem), psm);
+        outputConduit = new RwaMultiSwapOutputConduit(address(dai));
 
-        inputConduit.mate(me);
         outputConduit.mate(me);
         outputConduit.hope(me);
 
+        outputConduit.clap(address(psm));
+        outputConduit.hook(address(psm));
+
         outputConduit.kiss(me);
         outputConduit.pick(me);
-    }
-
-    /*//////////////////////////////////
-               Input Conduit Tests
-    //////////////////////////////////*/
-
-    function testInputConduitPush() public {
-        uint256 gemAmount = MAX_GEM_SELL;
-
-        assertEq(gem.balanceOf(address(inputConduit)), 0);
-
-        gem.transfer(address(inputConduit), gemAmount);
-
-        assertEq(gem.balanceOf(address(inputConduit)), gemAmount);
-        assertEq(dai.balanceOf(testUrn), 0);
-
-        inputConduit.push();
-
-        assertEq(gem.balanceOf(address(inputConduit)), 0);
-        assertEq(dai.balanceOf(testUrn), gemToDai(gemAmount));
-    }
-
-    function testInputConduitPushAmountFuzz(uint256 amt, uint256 urnBalance) public {
-        urnBalance = bound(urnBalance, 1 * WAD, 1_000_000 * WAD);
-        deal(address(dai), address(testUrn), urnBalance);
-        uint256 gemAmount = MAX_GEM_SELL;
-
-        gem.transfer(address(inputConduit), gemAmount);
-
-        uint256 gemCBalanceBefore = gem.balanceOf(address(inputConduit));
-        uint256 urnDaiBalanceBefore = dai.balanceOf(address(testUrn));
-
-        amt = bound(amt, 1 * GEM_DECIMALS, gemCBalanceBefore);
-
-        inputConduit.push(amt);
-
-        assertEq(gem.balanceOf(address(inputConduit)), gemCBalanceBefore - amt);
-        assertEq(dai.balanceOf(testUrn), urnDaiBalanceBefore + gemToDai(amt));
-    }
-
-    function testRevertInputConduitOnSwapAboveLine() public {
-        uint256 gemAmount = MAX_GEM_SELL + 1; // more then MAX
-
-        assertEq(gem.balanceOf(address(inputConduit)), 0);
-
-        gem.transfer(address(inputConduit), gemAmount);
-
-        assertEq(gem.balanceOf(address(inputConduit)), gemAmount);
-
-        assertEq(dai.balanceOf(testUrn), 0);
-
-        vm.expectRevert("Vat/ceiling-exceeded");
-        inputConduit.push();
-
-        assertEq(gem.balanceOf(address(inputConduit)), gemAmount);
-        assertEq(dai.balanceOf(testUrn), 0);
     }
 
     /*//////////////////////////////////
@@ -148,7 +91,8 @@ abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
 
         outputConduit.push();
 
-        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(daiAmount));
+        outputConduit.hook(address(psm));
+        assertEq(gem.balanceOf(address(me)), gemBalanceBefore + outputConduit.expectedGemAmt(address(psm), daiAmount));
         // We lose some dust because of decimals diff dai.decimals() > gem.decimals()
         assertApproxEqAbs(dai.balanceOf(address(outputConduit)), 0, GEM_DAI_DIFF_DECIMALS);
         assertEq(outputConduit.to(), address(0));
@@ -165,11 +109,12 @@ abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
 
         outputConduit.push(wadAmt);
 
-        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(wadAmt));
+        outputConduit.hook(address(psm));
+        assertEq(gem.balanceOf(me), gemBalance + outputConduit.expectedGemAmt(address(psm), wadAmt));
         // We lose some dust because of decimals diif dai.decimals() > gem.decimals()
         assertApproxEqAbs(
             dai.balanceOf(address(outputConduit)),
-            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(wadAmt)),
+            cDaiBalance - getDaiInAmount(outputConduit.expectedGemAmt(address(psm), wadAmt)),
             GEM_DAI_DIFF_DECIMALS
         );
         assertEq(outputConduit.to(), address(0));
@@ -209,7 +154,7 @@ abstract contract RwaSwapConduitsTestAbstract is Test, DSMath {
     }
 }
 
-contract RwaSwapConduitsPsmUsdcIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmUsdcIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -221,39 +166,25 @@ contract RwaSwapConduitsPsmUsdcIntegrationTest is RwaSwapConduitsTestAbstract {
     }
 }
 
-contract RwaSwapConduitsPsmPaxIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmPaxIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");
     }
 
     function setUp() public override {
-        // We set DC manually as DC is currently 0
-        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
-
-        vat.file(ILK, "line", 500_000_000 * (10**45));
-
-        vm.stopPrank();
-
         super.setUp();
         deal(address(gem), me, 2 * MAX_GEM_SELL);
     }
 }
 
-contract RwaSwapConduitsPsmGUSDIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmGUSDIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
     }
 
     function setUp() public override {
-        // We set DC manually as DC is currently maxed
-        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
-
-        vat.file(ILK, "line", 700_000_000 * (10**45));
-
-        vm.stopPrank();
-
         super.setUp();
 
         // Add GUSD blance
@@ -271,20 +202,13 @@ contract RwaSwapConduitsPsmGUSDIntegrationTest is RwaSwapConduitsTestAbstract {
     }
 }
 
-contract RwaSwapConduitsPsmGUSDWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmGUSDWith5PercentFeeIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-GUSD-A");
         psm = changelog.getAddress("MCD_PSM_GUSD_A");
     }
 
     function setUp() public override {
-        // We set DC manually as DC is currently maxed
-        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
-
-        vat.file(ILK, "line", 700_000_000 * (10**45));
-
-        vm.stopPrank();
-
         super.setUp();
 
         // Add GUSD blance
@@ -317,7 +241,7 @@ contract RwaSwapConduitsPsmGUSDWith5PercentFeeIntegrationTest is RwaSwapConduits
     }
 }
 
-contract RwaSwapConduitsPsmUSDCWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmUSDCWith5PercentFeeIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-USDC-A");
         psm = changelog.getAddress("MCD_PSM_USDC_A");
@@ -345,20 +269,13 @@ contract RwaSwapConduitsPsmUSDCWith5PercentFeeIntegrationTest is RwaSwapConduits
     }
 }
 
-contract RwaSwapConduitsPsmPAXWith5PercentFeeIntegrationTest is RwaSwapConduitsTestAbstract {
+contract RwaMultiSwapOutputConduitPsmPAXWith5PercentFeeIntegrationTest is RwaMultiSwapOutputConduitsTestAbstract {
     constructor() public {
         ILK = bytes32("PSM-PAX-A");
         psm = changelog.getAddress("MCD_PSM_PAX_A");
     }
 
     function setUp() public override {
-        // We set DC manually as DC is currently 0
-        vm.startPrank(changelog.getAddress("MCD_PAUSE_PROXY"));
-
-        vat.file(ILK, "line", 500_000_000 * (10**45));
-
-        vm.stopPrank();
-
         super.setUp();
 
         deal(address(gem), me, 2 * MAX_GEM_SELL);

@@ -10,8 +10,6 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  # For fork mode only
-  FORK_URL: ${{ secrets.ALCHEMY_MAINNET_ETH_RPC_URL }}
 
 jobs:
   check:
@@ -44,8 +42,8 @@ jobs:
 
       # Fork mode
       - name: Run Forge Tests (Fork)
+        env:
+          FORK_URL: ${{ secrets.ALCHEMY_MAINNET_ETH_RPC_URL }}
         run: |
           forge test -vvv --fork-url $FORK_URL --match-path "**.integration.t.sol"
         id: test-fork
-        env:
-          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
